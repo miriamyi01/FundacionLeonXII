@@ -27,7 +27,7 @@ Que todo lo que haga aquí ayude a que la fundación sea más eficiente y digita
 ---
 
 <p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Google_Logo.png/320px-Google_Logo.png" width="120" alt="Google Logo"/>
+  <img src="https://nforceit.com.au/wp-content/uploads/2023/10/nforceit-partner-google-workspace-logo.png" width="180" alt="Google Workspace Logo"/>
 </p>
 
 ---
