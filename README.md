@@ -24,12 +24,8 @@ Mi objetivo es crear scripts, plantillas y soluciones que hagan la vida más fá
 ## Mi meta 🎯
 Que todo lo que haga aquí ayude a que la fundación sea más eficiente y digital, ¡y que cualquiera pueda aprovecharlo después!
 
----
-
 <p align="center">
-  <img src="https://nforceit.com.au/wp-content/uploads/2023/10/nforceit-partner-google-workspace-logo.png" width="180" alt="Google Workspace Logo"/>
+  <img src="https://nforceit.com.au/wp-content/uploads/2023/10/nforceit-partner-google-workspace-logo.png" width="320" alt="Google Workspace Logo"/>
 </p>
-
----
 
 > _"La tecnología también puede ser solidaria."_ ✨
