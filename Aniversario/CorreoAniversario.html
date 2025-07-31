@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      /* Fondo y fuente general */
+      body {
+        font-family: Arial, sans-serif;
+        background: #0a1929;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* Tarjeta principal */
+      .main-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 32px 24px;
+        border-radius: 18px;
+        box-shadow: 0 8px 32px rgba(10,25,41,0.18), 0 1.5px 8px rgba(10,25,41,0.10);
+        margin-top: 32px;
+        margin-bottom: 32px;
+      }
+
+      /* Logo */
+      .header-img {
+        width: 100%;
+        max-width: 600px;
+        display: block;
+        margin: 0 auto;
+        border-radius: 0 0 18px 18px;
+        box-shadow: 0 4px 16px rgba(10,25,41,0.10);
+      }
+
+      /* Bloque informativo de vacaciones */
+      .vacaciones-block {
+        background: #fff;
+        border: 2.5px solid #0057b8;
+        border-radius: 18px;
+        padding: 28px 12px 20px 12px;
+        margin: 28px 0;
+        text-align: center;
+        box-shadow: 0 6px 24px rgba(0,40,80,0.13);
+      }
+
+      /* Título del bloque de vacaciones */
+      .vacaciones-title {
+        margin: 0 0 18px 0;
+        color: #0057b8;
+        text-align: center;
+        font-size: 1.22em;
+        letter-spacing: 1px;
+        font-weight: bold;
+      }
+
+      /* Contenedor de tarjetas de vacaciones */
+      .vacaciones-cards {
+        display: flex;
+        justify-content: center;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+
+      /* Tarjeta individual de información */
+      .vacaciones-card {
+        background: linear-gradient(135deg, #e3f0ff 80%, #fff 100%);
+        border-radius: 12px;
+        padding: 14px 20px;
+        min-width: 120px;
+        margin-bottom: 8px;
+        box-shadow: 0 2px 8px rgba(0,40,80,0.08);
+        border: 1.5px solid #b3d1f7;
+      }
+
+      /* Etiqueta de la tarjeta */
+      .vacaciones-label {
+        color: #0057b8;
+        font-weight: bold;
+        font-size: 0.98em;
+        margin-bottom: 2px;
+      }
+
+      /* Valor de la tarjeta */
+      .vacaciones-value {
+        font-size: 1.13em;
+        font-weight: bold;
+        color: #0a1929;
+      }
+
+      /* Bloque de nota informativa */
+      .note-block {
+        width: 100%;
+        background: #f5f5f5;
+        border-radius: 12px;
+        padding: 18px 18px;
+        margin: 24px 0;
+        box-sizing: border-box;
+        box-shadow: 0 2px 8px rgba(10,25,41,0.08);
+      }
+
+      /* Botón de acceso a la intranet */
+      .intranet-btn {
+        background: #d32f2f;
+        color: #fff;
+        padding: 12px 28px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.05em;
+        margin: 12px auto 0 auto;
+        box-shadow: 0 2px 8px rgba(211,47,47,0.10);
+        border: none;
+        transition: background 0.2s;
+      }
+
+      /* Hover del botón */
+      .intranet-btn:hover {
+        background: #b71c1c;
+      }
+
+      /* Estilos responsivos para tablet/móvil */
+      @media (max-width: 650px) {
+        .main-container {
+          padding: 12px 2vw;
+          margin-top: 8px;
+          margin-bottom: 8px;
+          border-radius: 10px;
+        }
+        .header-img {
+          border-radius: 0 0 10px 10px;
+          max-width: 100vw;
+        }
+        .vacaciones-block {
+          padding: 12px 2vw 8px 2vw;
+          border-radius: 10px;
+        }
+        .vacaciones-title {
+          font-size: 1.05em;
+        }
+        .vacaciones-cards {
+          gap: 6px;
+        }
+        .vacaciones-card {
+          padding: 8px 4px;
+          min-width: 80px;
+          font-size: 0.95em;
+          border-radius: 8px;
+        }
+        .note-block {
+          padding: 10px 6px;
+          border-radius: 8px;
+        }
+        .intranet-btn {
+          padding: 10px 10vw;
+          font-size: 1em;
+          border-radius: 6px;
+        }
+        h2, h3, h4 {
+          font-size: 1.1em !important;
+        }
+        p, .vacaciones-label, .vacaciones-value {
+          font-size: 0.98em !important;
+        }
+      }
+
+      /* Estilos responsivos para pantallas muy pequeñas */
+      @media (max-width: 400px) {
+        .main-container {
+          padding: 4px 0.5vw;
+        }
+        .vacaciones-card {
+          min-width: 60px;
+          padding: 4px 2px;
+        }
+        .intranet-btn {
+          padding: 8px 2vw;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ========================================= -->
+    <!-- Encabezado con imagen institucional: logo de la fundación -->
+    <div style="background: #0a1929; width: 100%; text-align: center;">
+      <img class="header-img" src="https://static.wixstatic.com/media/b7631c_d00e105e33eb4fe582f354b3e52a8394~mv2.png/v1/fill/w_362,h_100,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/logo-blanco.png" alt="Fundación León XIII">
+    </div>
+    <!-- ========================================= -->
+    <!-- Contenedor principal del mensaje: tarjeta blanca con sombra -->
+    <div class="main-container">
+      <!-- Saludo personalizado con nombre y años: nombre y años de antigüedad -->
+      <h2 style="color: #d32f2f; text-align: center;">¡Hola <?= nombre ?>!</h2>
+      <p style="color: #d32f2f; text-align: center;">Hoy estás cumpliendo <b><?= anios ?></b> año(s) siendo parte de</p>
+      <p style="color: #d32f2f; text-align: center;"><b>Fundación León XIII 🎊</b></p>
+      <!-- Mensaje de agradecimiento y reconocimiento: texto motivacional -->
+      <p>El tiempo vuela cuando contamos con personas tan comprometidas como tú. Muchas gracias por todo lo que aportas al equipo. Tu dedicación y esfuerzo han sido clave para todo lo que hemos conseguido juntos, especialmente en nuestra misión de mejorar la calidad de vida de las comunidades indígenas con las que trabajamos. Además, es un orgullo ver cómo has crecido tanto profesional como personalmente en este tiempo.</p>
+      <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 24px 0;">
+      <!-- Anuncio de nuevo periodo vacacional: activa el nuevo periodo -->
+      <h3 style="color: #0057b8; text-align: center;">¡Y ahora viene lo mejor!</h3>
+      <p>Tu nuevo periodo vacacional ya está activo, así que puedes programarlo cuando quieras. ¡Lo tienes más que merecido! 🌟</p>
+      <!-- Enlace al archivo de vacaciones: link al documento de vacaciones -->
+      <p>
+        <b>Nuevo:</b> Archivo de vacaciones ✨ 
+        <a href="<?= enlaceArchivo ?>" style="color: #0057b8; text-decoration: underline;">[Ver archivo]</a>
+      </p>
+      <!-- ========================================= -->
+      <!-- Bloque informativo sobre el periodo de vacaciones: tarjetas con días, inicio y límite -->
+      <div class="vacaciones-block">
+        <h4 class="vacaciones-title">Periodo de vacaciones</h4>
+        <div class="vacaciones-cards">
+          <div class="vacaciones-card">
+            <span class="vacaciones-label">Días del periodo</span>
+            <span class="vacaciones-value"><?= diasVacaciones ?></span>
+          </div>
+          <div class="vacaciones-card">
+            <span class="vacaciones-label">Desde</span>
+            <span class="vacaciones-value"><?= fechaInicio ?></span>
+          </div>
+          <div class="vacaciones-card">
+            <span class="vacaciones-label">Programar antes de</span>
+            <span class="vacaciones-value"><?= fechaLimite ?></span>
+          </div>
+        </div>
+      </div>
+      <!-- ========================================= -->
+      <!-- Nota sobre la importancia de desconectarse en vacaciones: bloque destacado -->
+      <div class="note-block">
+        <p style="font-size: 0.95em; color: #d32f2f; margin: 0;">
+          <b>Nota:</b> Para que realmente recargues energías y te relajes, lo ideal es que cuando pidas tus vacaciones te desconectes por completo. ¡Es tu momento de descanso! 😊
+        </p>
+      </div>
+      <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 24px 0;">
+      <!-- Tip para guardar el archivo en un espacio de trabajo: recomendación práctica -->
+      <p>
+        <b>TIP:</b> Guarda tu archivo en un "Espacio de trabajo", así lo tienes siempre a la mano (¡muy práctico! 📌).
+      </p>
+      <!-- Ayuda para crear espacio de trabajo o llenar formato: referencia a cápsulas -->
+      <p>Si necesitas ayuda para crear tu espacio de trabajo o llenar el formato, puedes checar las cápsulas de aprendizaje en nuestra intranet.</p>
+      <!-- Botón de acceso a la intranet: acceso directo -->
+      <p>
+        <a href="https://sites.google.com/fundacionleontrece.org/intranet" class="intranet-btn">Intranet</a>
+      </p>
+      <!-- ========================================= -->
+      <!-- Mensaje de cierre y agradecimiento: frase final motivacional -->
+      <p style="margin-top: 32px; background: #0a1929; color: #fff; font-weight: bold; padding: 16px 0; border-radius: 8px; text-align: center;">¡Gracias por poner el ❤️ en tu trabajo!</p>
+    </div>
+  </body>
+</html>
