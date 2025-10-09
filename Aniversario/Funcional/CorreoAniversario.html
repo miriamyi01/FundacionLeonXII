@@ -6,7 +6,7 @@
     /* ==================== RESET & BASE ==================== */
     body {
       font-family: Arial, sans-serif;
-      background: rgb(39,53,73);
+      background: #1B5FA9;
       margin: 0;
       padding: 0;
       font-size: 19px;
@@ -17,7 +17,6 @@
       width: 35%;
       display: block;
       margin: 0 auto 10px auto;
-      box-shadow: 0 4px 16px rgba(39,53,73,0.10);
       padding-top: 15px;
       padding-bottom: 15px;
     }
@@ -29,14 +28,13 @@
       background: #fff;
       padding: 28px 18px;
       border-radius: 18px;
-      box-shadow: 0 8px 32px rgba(39,53,73,0.18), 0 1.5px 8px rgba(39,53,73,0.10);
       margin-top: 18px;
       margin-bottom: 18px;
     }
 
     /* ==================== BUTTONS ==================== */
     .archivo-btn, .intranet-btn {
-      background: rgb(235,34,48);
+      background: #E78F24;
       color: #fff !important;
       padding: 10px 22px;
       border-radius: 10px;
@@ -46,7 +44,6 @@
       text-align: center;
       font-weight: bold;
       font-size: 18px;
-      box-shadow: 0 2px 8px rgba(235,34,48,0.10);
       border: none;
       transition: background 0.2s;
       cursor: pointer;
@@ -54,7 +51,7 @@
       width: auto;
     }
     .archivo-btn:hover, .intranet-btn:hover {
-      background: rgb(235,34,48);
+      background: #E78F24;
     }
 
     /* ==================== LINEA DIVISORIA ==================== */
@@ -69,18 +66,17 @@
     /* ==================== VACATION BLOCK ==================== */
     .vacaciones-block {
       background: none;
-      border: 2px solid rgb(39,53,73);
+      border: 2px solid #237BBC;
       border-radius: 18px;
       padding: 22px 8px 14px 8px;
       margin: 28px auto;
       text-align: center;
-      box-shadow: none;
       max-width: 410px;
       display: block;
     }
     .vacaciones-title {
       margin: 0 0 14px 0;
-      color: rgb(39,53,73);
+      color: #237BBC;
       text-align: center;
       font-size: 20px;
       letter-spacing: 1px;
@@ -102,12 +98,11 @@
       margin: 0 auto 14px auto;
       background: none;
       border: none;
-      box-shadow: none;
       font-size: 14px;
       text-align: center;
     }
     .vacaciones-label-box {
-      background: rgb(39,53,73);
+      background: #237BBC;
       color: #fff;
       border-radius: 10px 0 0 10px;
       font-weight: bold;
@@ -119,7 +114,7 @@
       justify-content: center;
     }
     .vacaciones-value-box {
-      background: rgb(235,34,48);
+      background: #E78F24;
       color: #fff;
       border-radius: 0 10px 10px 0;
       font-weight: bold;
@@ -139,14 +134,13 @@
       padding: 25px;
       margin: 18px 0;
       box-sizing: border-box;
-      box-shadow: 0 2px 8px rgba(39,53,73,0.08);
       font-size: 18px;
     }
 
     /* ==================== FOOTER ==================== */
     .gracias-footer {
       margin: 0 0 0 0;
-      background: rgb(39,53,73);
+      background: #1B5FA9;
       color: #fff;
       font-weight: bold;
       padding: 28px 0;
@@ -157,7 +151,6 @@
       font-size: 25px;
       letter-spacing: 1px;
       box-sizing: border-box;
-      box-shadow: none;
     }
 
   /* ==================== RESPONSIVE (ELIMINADO PARA COMPATIBILIDAD EMAIL) ==================== */
@@ -166,16 +159,16 @@
   <body>
     <!-- ========================================= -->
     <!-- Encabezado con imagen institucional: logo de la fundación -->
-  <div style="background: rgb(39,53,73); width: 100%; text-align: center;">
+  <div style="background: #1B5FA9; width: 100%; text-align: center;">
       <img class="header-img" src="https://static.wixstatic.com/media/b7631c_d00e105e33eb4fe582f354b3e52a8394~mv2.png/v1/fill/w_362,h_100,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/logo-blanco.png" alt="Fundación León XIII">
     </div>
     <!-- ========================================= -->
     <!-- Contenedor principal del mensaje: tarjeta blanca con sombra -->
     <div class="main-container">
       <!-- Saludo personalizado con nombre y años: nombre y años de antigüedad -->
-      <h2 style="color: rgb(235,34,48); text-align: center; font-size: 30px; margin-bottom: 18px; margin-top: 0;">¡Hola <?= nombre ?>!</h2>
-      <p style="color: rgb(235,34,48); text-align: center; font-size: 22px; margin: 0 0 14px 0;">Hoy estás cumpliendo <b><?= anios ?></b> año(s) siendo parte de</p>
-      <p style="color: rgb(235,34,48); text-align: center; font-size: 22px; margin: 0 0 24px 0;"><b>Fundación León XIII &#x1F38A;</b></p>
+      <h2 style="color: #E78F24; text-align: center; font-size: 30px; margin-bottom: 18px; margin-top: 0;">¡Hola <?= nombre ?>!</h2>
+      <p style="color: #E78F24; text-align: center; font-size: 22px; margin: 0 0 14px 0;">Hoy estás cumpliendo <b><?= anios ?></b> año(s) siendo parte de</p>
+      <p style="color: #E78F24; text-align: center; font-size: 22px; margin: 0 0 24px 0;"><b>Fundación León XIII &#x1F38A;</b></p>
       <!-- Mensaje de agradecimiento y reconocimiento: texto motivacional -->
       <p style="font-size: 18px; color: rgb(67,67,67); margin: 0 0 28px 0;">El tiempo vuela cuando contamos con personas tan comprometidas como tú. Muchas gracias por todo lo que aportas al equipo. Tu dedicación y esfuerzo han sido clave para todo lo que hemos conseguido juntos, especialmente en nuestra misión de mejorar la calidad de vida de las comunidades indígenas con las que trabajamos. Además, es un orgullo ver cómo has crecido tanto profesional como personalmente en este tiempo.</p>
       <!-- Línea divisoria gris claro y 100% ancho, ahora difuminada -->
@@ -206,7 +199,7 @@
         </div>
       </div>
       <!-- Nota sobre la importancia de desconectarse en vacaciones: bloque destacado -->
-      <div class="note-block" style="margin-bottom: 22px; font-size: 18px; color: rgb(235,34,48);">
+      <div class="note-block" style="margin-bottom: 22px; font-size: 18px; color: #E78F24;">
         <b>Nota:</b> Para que realmente recargues energías y te relajes, <b>lo ideal es que cuando pidas tus vacaciones te desconectes por completo.</b> ¡Es tu momento de descanso! &#x1F60A;
       </div>
       <p style="font-size: 18px; color: rgb(67,67,67); margin: 0 0 18px 0;">
