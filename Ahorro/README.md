@@ -72,7 +72,7 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 
 3. **Configuración del Trigger Automático (MUY IMPORTANTE):**
    
-   Para que el script detecte automáticamente nuevos préstamos cada semana:
+   Para que el script detecte automáticamente nuevos préstamos cada día:
    
    a) **En el editor de Apps Script, ve al menú lateral izquierdo y selecciona "Activadores" (⏰ Triggers).**
    
@@ -81,24 +81,54 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    c) **Configura el activador así:**
    - **Función que se ejecutará:** `llenarCondensadoPrestamos`
    - **Evento de activación:** `Basado en tiempo`
-   - **Tipo de activador basado en tiempo:** `Activador semanal`
-   - **Día de la semana:** `Lunes` (recomendado)
-   - **Hora:** `9:00 a.m. - 10:00 a.m.` (o la hora que prefieras)
+   - **Tipo de activador basado en tiempo:** `Activador diario`
+   - **Hora del día:** `9:00 a.m. - 10:00 a.m.` (o la hora que prefieras)
    
    d) **Haz clic en "Guardar".**
    
    e) **La primera vez te pedirá autorización. Haz clic en "Revisar permisos" y autoriza el acceso.**
 
 4. **Verificación del funcionamiento:**
-   - Después de configurar el trigger, el script se ejecutará automáticamente cada semana.
+   - Después de configurar el trigger, el script se ejecutará automáticamente cada día.
    - Puedes verificar que funciona revisando los logs en Apps Script después de cada ejecución.
    - También puedes ejecutar manualmente la función cuando quieras actualizar inmediatamente.
 
 5. **Ventajas del sistema automatizado:**
    - **Sin duplicados:** No vuelve a procesar préstamos que ya están registrados.
    - **Incremental:** Solo agrega préstamos nuevos, manteniendo el historial completo.
-   - **Automático:** Se ejecuta sin intervención manual cada semana.
+   - **Automático:** Se ejecuta sin intervención manual cada día.
    - **Eficiente:** Usa rangos específicos (B13:B23, D13:D23, etc.) para mejor rendimiento.
+
+### Paso 5: Procesar avales (`4.1-Avales.gs`)
+
+1. **Abre el editor de Apps Script y pega el código de `4.1-Avales.gs`.**
+2. **Ejecuta la función `procesarAvales`.**
+   - El script busca información de avales en las hojas `Tarjeta Ahorro` de cada socio.
+   - Identifica los préstamos donde un socio está actuando como aval para otro socio.
+   - Agrega automáticamente la información del aval en las hojas de préstamo correspondientes.
+   - Calcula el saldo pendiente del préstamo usando fórmulas `IMPORTRANGE` con filtros avanzados.
+   - Obtiene la fecha de compromiso del préstamo.
+
+3. **Funcionamiento del proceso:**
+   - Lee las últimas 3 filas de cada hoja `Tarjeta Ahorro` buscando información de avales.
+   - Extrae: número de préstamo, código del prestatario, nombre del prestatario, y monto avalado.
+   - Busca la hoja de préstamo correspondiente (`Tarjeta Prestamo #X`) en la tarjeta del prestatario.
+   - Agrega el nombre del aval y el monto en las filas 4-7 de la columna H e I respectivamente.
+   - Aplica fórmulas para calcular automáticamente:
+     - **Saldo pendiente:** Usando `IFERROR(INDEX(FILTER(...)))` para obtener el último saldo del préstamo
+     - **Fecha de compromiso:** Importando la fecha del préstamo desde la celda C5
+
+4. **Configuración de ID dinámico:**
+   - El script usa automáticamente el ID específico de cada tarjeta del prestatario (`prestatarioInfo.tarjetaId`)
+   - Esto permite referenciar correctamente cada archivo individual de préstamo.
+   - Las fórmulas se generan dinámicamente para cada socio y préstamo específico.
+
+### Paso 6: Generar condensado final (`5-CondensadoFinal.gs`)
+
+1. **Abre el editor de Apps Script y pega el código de `5-CondensadoFinal.gs`.**
+2. **Ejecuta la función correspondiente para generar el reporte final.**
+   - Este paso consolida toda la información procesada en los pasos anteriores.
+   - Genera reportes finales con los datos de ahorros, préstamos y avales.
 
 ---
 
@@ -124,3 +154,15 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 ## 4. Contacto
 
 Para dudas o mejoras, contacta a miriam08.mr@gmail.com
+
+
+asi viene mi archivo la primera columna son intereses y la segunda son abonos, yo tengo que llenar esto por mes:
+Marzo					
+CORTE SEMANAL					CORTE MENSUAL
+PRIMERA	SEGUNDA	TERCERA	CUARTA	QUINTA	
+$990.00	$2,160.00	$3,060.00	$2,970.00	$2,970.00	$990.00
+$1,170.00	$900.00	$0.00	$0.00	$0.00	$2,070.00
+$0.00	$0.00	$0.00	$0.00	$0.00	$0.00
+$0.00	$0.00	$0.00	$0.00	$0.00	$0.00
+
+osea ese 
