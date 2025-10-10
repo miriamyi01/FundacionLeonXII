@@ -46,6 +46,10 @@ function crearCarpetasSocios() {
 
   var lastRow = sheet.getLastRow();
   var sociosCreados = 0;
+  var carpetasCreadas = 0;
+  var archivosCreados = 0;
+  var sociosExistentes = 0;
+  
   for (var i = 8; i <= lastRow; i++) {
     var nombre = sheet.getRange("B" + i).getValue().toString().trim();
     var apellido1 = sheet.getRange("C" + i).getValue().toString().trim();
@@ -64,29 +68,47 @@ function crearCarpetasSocios() {
     var carpetaSocioNombre = numeroSocio + " " + iniciales + " " + nombre + " " + apellido1 + " " + apellido2;
 
     var carpetaSocio;
+    var carpetaExistia = false;
     var subfolders = mainFolder.getFoldersByName(carpetaSocioNombre);
     if (subfolders.hasNext()) {
       carpetaSocio = subfolders.next();
+      carpetaExistia = true;
     } else {
       carpetaSocio = mainFolder.createFolder(carpetaSocioNombre);
+      carpetasCreadas++;
       Logger.log("Carpeta de socio creada: " + carpetaSocioNombre);
     }
 
-    // Crear copia y actualizar B1 y D1 en la tarjeta de ahorro y préstamo
-    var socioCopy = baseFile.makeCopy(iniciales + " - TARJETA AHORRO Y PRESTAMO", carpetaSocio);
-    var socioCopyId = socioCopy.getId();
-    var socioSheet = SpreadsheetApp.openById(socioCopyId).getSheets()[0];
-    // Capitalizar cada palabra del nombre completo
-    function capitalizar(str) {
-      return str.replace(/\w\S*/g, function(txt) {
-        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-      });
+    // Verificar si el archivo ya existe en la carpeta del socio
+    var archivoNombre = iniciales + " - TARJETA AHORRO Y PRESTAMO";
+    var archivosExistentes = carpetaSocio.getFilesByName(archivoNombre);
+    var archivoExiste = archivosExistentes.hasNext();
+
+    if (archivoExiste) {
+      sociosExistentes++;
+    } else {
+      // Crear copia y actualizar B1 y D1 en la tarjeta de ahorro y préstamo
+      var socioCopy = baseFile.makeCopy(archivoNombre, carpetaSocio);
+      var socioCopyId = socioCopy.getId();
+      var socioSheet = SpreadsheetApp.openById(socioCopyId).getSheets()[0];
+      // Capitalizar cada palabra del nombre completo
+      function capitalizar(str) {
+        return str.replace(/\w\S*/g, function(txt) {
+          return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+        });
+      }
+      var nombreCompleto = capitalizar(nombre + " " + apellido1 + " " + apellido2);
+      socioSheet.getRange("B1").setValue(nombreCompleto);
+      socioSheet.getRange("D1").setValue(numeroSocio); // Número de socio
+      archivosCreados++;
+      Logger.log("Archivo creado para el socio: " + carpetaSocioNombre);
     }
-    var nombreCompleto = capitalizar(nombre + " " + apellido1 + " " + apellido2);
-    socioSheet.getRange("B1").setValue(nombreCompleto);
-    socioSheet.getRange("D1").setValue(numeroSocio); // Número de socio
 
     sociosCreados++;
   }
-  Logger.log("¡Carpetas y archivos creados exitosamente! Total socios: " + sociosCreados);
+  Logger.log("¡Proceso completado exitosamente!");
+  Logger.log("Total socios procesados: " + sociosCreados);
+  Logger.log("Carpetas nuevas creadas: " + carpetasCreadas);
+  Logger.log("Archivos nuevos creados: " + archivosCreados);
+  Logger.log("Socios que ya tenían archivo: " + sociosExistentes);
 }

@@ -29,6 +29,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 
 ## 2. Flujo de automatización
 
+> **📝 NOTA IMPORTANTE:** Los scripts `1-Carpetas.gs`, `2-InformeInicial.gs` y `4-InformePrestamoSemanal.gs` están optimizados para **ejecución múltiple sin duplicados**. Puedes ejecutarlos tantas veces como necesites de forma segura - detectan automáticamente elementos existentes y solo procesan información nueva. Todos proporcionan reportes detallados en los logs para monitorear el proceso.
+
 ### Paso 1: Crear carpetas y archivos de socios (`1-Carpetas.gs`)
 
 1. **Coloca la hoja de cálculo y el archivo base en la misma carpeta de Google Drive.**
@@ -46,10 +48,11 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 2. **Ejecuta la función `registrarSociosCondensado`.**
    - El script llenará la hoja `Ahorros y Retiros` con los datos de los socios desde el archivo `03 LISTA DE INSCRIPCION`.
    - Ajusta automáticamente el número de filas y coloca fórmulas `IMPORTRANGE` para importar los datos de inscripción.
+   - Solo agrega socios nuevos que no estén ya registrados en el condensado.
 
-### Paso 3: Llenar el informe semanal (`3-InformeSemanal.gs`)
+### Paso 3: Llenar el informe semanal de ahorros (`3-InformeAhorroSemanal.gs`)
 
-1. **Abre el editor de Apps Script y pega el código de `3-InformeSemanal.gs`.**
+1. **Abre el editor de Apps Script y pega el código de `3-InformeAhorroSemanal.gs`.**
 2. **Ejecuta la función `llenarCondensadoAhorros`.**
    - El script detecta los bloques de semanas y meses en la hoja.
    - Busca la carpeta de cada socio (por número de socio y nombre) dentro de la subcarpeta `[XXXX-SOCIOS AS]`.
@@ -63,12 +66,11 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 1. **Abre el editor de Apps Script y pega el código de `4-InformePrestamoSemanal.gs`.**
 2. **Ejecuta la función `llenarCondensadoPrestamos`.**
    - El script busca todas las hojas de préstamos (`Tarjeta Prestamo #1`, `Tarjeta Prestamo #2`, etc.) en cada archivo de socio.
-   - **Detección inteligente de préstamos nuevos:** Solo procesa préstamos que no están ya registrados en la hoja `Prestamos`.
+   - Solo procesa préstamos nuevos que no están ya registrados en la hoja `Prestamos`.
    - Identifica préstamos únicos usando la combinación `código_socio#número_préstamo`.
    - Llena los datos básicos del préstamo (número, código, nombre, fecha, cantidad, pago pendiente, destino, interés, tipo de pago).
    - Calcula automáticamente los pagos mensuales (intereses y abonos) para cada mes del año.
    - Calcula la semana del mes del último abono realizado para cada mes.
-   - **Preserva datos existentes:** No borra ni sobrescribe préstamos que ya están en el informe.
 
 3. **Configuración del Trigger Automático (MUY IMPORTANTE):**
    
@@ -94,7 +96,6 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    - También puedes ejecutar manualmente la función cuando quieras actualizar inmediatamente.
 
 5. **Ventajas del sistema automatizado:**
-   - **Sin duplicados:** No vuelve a procesar préstamos que ya están registrados.
    - **Incremental:** Solo agrega préstamos nuevos, manteniendo el historial completo.
    - **Automático:** Se ejecuta sin intervención manual cada día.
    - **Eficiente:** Usa rangos específicos (B13:B23, D13:D23, etc.) para mejor rendimiento.
@@ -144,8 +145,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
   Si el archivo base tiene celdas protegidas, asegúrate de tener permisos para editarlas antes de hacer las copias.
 - **IMPORTRANGE:**  
   La primera vez que uses `IMPORTRANGE` para un archivo nuevo, deberás autorizar el acceso manualmente en la celda correspondiente.
-- **Logs:**  
-  Puedes revisar los logs en el editor de Apps Script para ver detalles del proceso y errores.
+- **Logs y reportes:**  
+  Los scripts optimizados proporcionan reportes detallados en los logs para monitorear el proceso y verificar qué elementos fueron creados vs. existentes.
 - **Nombres y formatos:**  
   El script capitaliza automáticamente el nombre completo en las tarjetas de ahorro.
 
@@ -154,15 +155,3 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 ## 4. Contacto
 
 Para dudas o mejoras, contacta a miriam08.mr@gmail.com
-
-
-asi viene mi archivo la primera columna son intereses y la segunda son abonos, yo tengo que llenar esto por mes:
-Marzo					
-CORTE SEMANAL					CORTE MENSUAL
-PRIMERA	SEGUNDA	TERCERA	CUARTA	QUINTA	
-$990.00	$2,160.00	$3,060.00	$2,970.00	$2,970.00	$990.00
-$1,170.00	$900.00	$0.00	$0.00	$0.00	$2,070.00
-$0.00	$0.00	$0.00	$0.00	$0.00	$0.00
-$0.00	$0.00	$0.00	$0.00	$0.00	$0.00
-
-osea ese 
