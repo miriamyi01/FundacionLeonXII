@@ -152,6 +152,30 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 
 ---
 
+## 2.1. Actualización de permisos de rangos protegidos en archivos de socios
+
+Si necesitas modificar los permisos de los rangos protegidos (por ejemplo, cambiar o agregar editores) en todos los archivos de los socios, puedes automatizar este proceso usando el script `ActualizacionPermisos.gs`.
+
+### ¿Cuándo usarlo?
+- Cuando cambias los permisos de los rangos protegidos en el archivo base (`04 TARJETA AHORRO Y PRESTAMO`) y quieres que esos mismos permisos se apliquen en todos los archivos de los socios.
+- Cuando necesitas agregar o quitar editores de los rangos protegidos de las hojas "Tarjeta Ahorro" y "Tarjeta Prestamo #n" en todos los archivos de los socios.
+
+### ¿Qué hace el script?
+- Elimina todas las protecciones de rangos existentes en las hojas "Tarjeta Ahorro" y "Tarjeta Prestamo #n" de cada archivo de socio.
+- Crea nuevas protecciones de rangos exactamente iguales a las del archivo base (`04 TARJETA AHORRO Y PRESTAMO`), incluyendo los mismos rangos, editores, advertencias y descripciones.
+- **No elimina ni modifica el contenido de las celdas, solo actualiza las reglas de protección.**
+
+### ¿Cómo usarlo?
+1. **Actualiza los permisos de los rangos protegidos en el archivo base (`04 TARJETA AHORRO Y PRESTAMO`) como desees.**
+2. **Abre el archivo base y ve a Extensiones > Apps Script.**
+3. **Pega el código de `ActualizacionPermisos.gs` y ejecuta la función `actualizarPermisosProteccion()`.**
+4. **El script recorrerá todas las carpetas de socios y actualizará los rangos protegidos en las hojas correspondientes.**
+5. **Revisa los logs para ver el resumen de archivos y protecciones actualizadas.**
+
+> **Nota:** Solo se modifican las hojas que se llamen exactamente "Tarjeta Ahorro" o que empiecen con "Tarjeta Prestamo" (por ejemplo, "Tarjeta Prestamo #1", "Tarjeta Prestamo #2", etc.).
+
+---
+
 ## 3. Consideraciones y recomendaciones
 
 - **Estructura de carpetas simplificada:**  
