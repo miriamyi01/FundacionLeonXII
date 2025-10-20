@@ -65,15 +65,8 @@ function llenarCondensadoAhorros() {
     return;
   }
 
-  // Buscar subcarpeta de socios: [primeras 4 letras de proyecto]-SOCIOS AS
-  var baseName = sheetCondensado.getRange("A8").getValue().toString().substring(0, 4);
-  var sociosFolderName = baseName + "-SOCIOS AS";
-  var sociosFolders = parentFolder.getFoldersByName(sociosFolderName);
-  if (!sociosFolders.hasNext()) {
-    Logger.log('No se encontró la subcarpeta de socios: ' + sociosFolderName);
-    return;
-  }
-  var sociosMainFolder = sociosFolders.next();
+  // La carpeta principal YA contiene las carpetas de los socios
+  var sociosMainFolder = parentFolder;
 
   for (var i = 0; i < sociosData.length; i++) {
     var socioId = sociosData[i][0];

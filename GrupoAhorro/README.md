@@ -18,6 +18,7 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 
 - **Estructura de la hoja de cálculo:**  
   - La hoja de cálculo principal debe estar dentro de una carpeta en Google Drive.
+  - **IMPORTANTE:** Las carpetas de los socios deben estar en la misma carpeta principal donde está la hoja de cálculo (sin subcarpetas intermedias).
   - En la hoja de cálculo, la celda A8 debe tener el código base (por ejemplo, `2024`).
   - Los datos de los socios deben estar en las columnas:
     - A: Número de socio (desde la fila 8)
@@ -29,14 +30,14 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 
 ## 2. Flujo de automatización
 
-> **📝 NOTA IMPORTANTE:** Los scripts `1-Carpetas.gs`, `2-InformeInicial.gs` y `4-InformePrestamoSemanal.gs` están optimizados para **ejecución múltiple sin duplicados**. Puedes ejecutarlos tantas veces como necesites de forma segura - detectan automáticamente elementos existentes y solo procesan información nueva. Todos proporcionan reportes detallados en los logs para monitorear el proceso.
+> **📝 NOTA IMPORTANTE:** Los scripts `1-Carpetas.gs`, `2-InformeInicial.gs`, `3-InformeAhorroSemanal.gs`, `4-InformePrestamoSemanal.gs` y `4.1-Avales.gs` están optimizados para **ejecución múltiple sin duplicados**. Puedes ejecutarlos tantas veces como necesites de forma segura - detectan automáticamente elementos existentes y solo procesan información nueva. Todos proporcionan reportes detallados en los logs para monitorear el proceso.
 
 ### Paso 1: Crear carpetas y archivos de socios (`1-Carpetas.gs`)
 
 1. **Coloca la hoja de cálculo y el archivo base en la misma carpeta de Google Drive.**
 2. **Abre el editor de Apps Script y pega el código de `1-Carpetas.gs`.**
 3. **Ejecuta la función `crearCarpetasSocios`.**
-   - El script creará una subcarpeta `[XXXX-SOCIOS AS]` (donde `XXXX` son las primeras 4 letras del código base de A8).
+   - El script creará carpetas de socios directamente en la carpeta principal (misma carpeta donde está la hoja de cálculo).
    - Para cada socio, creará una carpeta con el formato:  
      `[Número de socio] [INICIALES] [Nombre completo]`
    - Dentro de cada carpeta de socio, copiará el archivo base y lo renombrará con las iniciales.
@@ -55,22 +56,24 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 1. **Abre el editor de Apps Script y pega el código de `3-InformeAhorroSemanal.gs`.**
 2. **Ejecuta la función `llenarCondensadoAhorros`.**
    - El script detecta los bloques de semanas y meses en la hoja.
-   - Busca la carpeta de cada socio (por número de socio y nombre) dentro de la subcarpeta `[XXXX-SOCIOS AS]`.
+   - Busca la carpeta de cada socio (por número de socio y nombre) directamente en la carpeta principal.
    - Busca el archivo de ahorro correspondiente (por iniciales y nombre).
    - Llena las fórmulas de cada semana en el concentrado usando `IMPORTRANGE`, mostrando vacío si hay error o #N/A.
    - Solo procesa filas de socios (omite las últimas 3 filas de la hoja).
    - Solo llena hasta la última columna donde aparece "QUINTA" en las semanas de cada mes.
+   - **Optimización:** Usa la carpeta principal directamente sin buscar subcarpetas, mejorando el rendimiento.
 
 ### Paso 4: Llenar el informe de préstamos semanales (`4-InformePrestamoSemanal.gs`)
 
 1. **Abre el editor de Apps Script y pega el código de `4-InformePrestamoSemanal.gs`.**
 2. **Ejecuta la función `llenarCondensadoPrestamos`.**
    - El script busca todas las hojas de préstamos (`Tarjeta Prestamo #1`, `Tarjeta Prestamo #2`, etc.) en cada archivo de socio.
+   - **Sistema de detección de duplicados mejorado:** Identifica préstamos únicos usando la combinación `código_socio#número_préstamo` y mantiene un registro interno de préstamos existentes.
    - Solo procesa préstamos nuevos que no están ya registrados en la hoja `Prestamos`.
-   - Identifica préstamos únicos usando la combinación `código_socio#número_préstamo`.
    - Llena los datos básicos del préstamo (número, código, nombre, fecha, cantidad, pago pendiente, destino, interés, tipo de pago).
    - Calcula automáticamente los pagos mensuales (intereses y abonos) para cada mes del año.
    - Calcula la semana del mes del último abono realizado para cada mes.
+   - **Optimización:** Busca carpetas de socios directamente en la carpeta principal.
 
 3. **Configuración del Trigger Automático (MUY IMPORTANTE):**
    
@@ -104,25 +107,41 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 
 1. **Abre el editor de Apps Script y pega el código de `4.1-Avales.gs`.**
 2. **Ejecuta la función `procesarAvales`.**
-   - El script busca información de avales en las hojas `Tarjeta Ahorro` de cada socio.
-   - Identifica los préstamos donde un socio está actuando como aval para otro socio.
+   - **Procesamiento bidireccional mejorado:** El script ahora procesa avales en ambos sentidos:
+     - **Aval → Prestatario:** Lee información de avales desde las hojas `Tarjeta Ahorro` y la registra en las hojas de préstamo correspondientes.
+     - **Prestatario → Aval:** Busca inversamente desde las hojas de préstamo hacia las tarjetas de ahorro de los avales para completar información faltante.
+   - **Detección inteligente de duplicados:** Verifica que los avales no se agreguen múltiples veces en ambos sentidos de procesamiento.
    - Agrega automáticamente la información del aval en las hojas de préstamo correspondientes.
    - Calcula el saldo pendiente del préstamo usando fórmulas `IMPORTRANGE` con filtros avanzados.
    - Obtiene la fecha de compromiso del préstamo.
 
-3. **Funcionamiento del proceso:**
+3. **Funcionamiento del proceso bidireccional:**
+   
+   **Sentido Aval → Prestatario:**
    - Lee las últimas 3 filas de cada hoja `Tarjeta Ahorro` buscando información de avales.
    - Extrae: número de préstamo, código del prestatario, nombre del prestatario, y monto avalado.
    - Busca la hoja de préstamo correspondiente (`Tarjeta Prestamo #X`) en la tarjeta del prestatario.
    - Agrega el nombre del aval y el monto en las filas 4-7 de la columna H e I respectivamente.
-   - Aplica fórmulas para calcular automáticamente:
-     - **Saldo pendiente:** Usando `IFERROR(INDEX(FILTER(...)))` para obtener el último saldo del préstamo
-     - **Fecha de compromiso:** Importando la fecha del préstamo desde la celda C5
+   
+   **Sentido Prestatario → Aval (Búsqueda Inversa):**
+   - Recorre todas las hojas de préstamo de cada socio.
+   - Identifica los avales registrados en las hojas de préstamo (filas 4-7, columna H).
+   - Usa **normalización avanzada de nombres** (elimina acentos, convierte a mayúsculas) para buscar la carpeta del aval.
+   - **Búsqueda flexible por palabras:** Busca coincidencias con al menos 2 palabras significativas del nombre del aval.
+   - Agrega la información del préstamo en la hoja `Tarjeta Ahorro` del aval si no existe ya.
+   - Evita duplicados verificando registros existentes antes de agregar nuevos.
 
 4. **Configuración de ID dinámico:**
    - El script usa automáticamente el ID específico de cada tarjeta del prestatario (`prestatarioInfo.tarjetaId`)
    - Esto permite referenciar correctamente cada archivo individual de préstamo.
    - Las fórmulas se generan dinámicamente para cada socio y préstamo específico.
+
+5. **Reportes detallados:**
+   - El script registra en logs ambos sentidos de procesamiento por separado.
+   - Muestra contadores independientes para:
+     - Avales procesados de aval a prestatario
+     - Avales procesados de prestatario a aval (búsqueda inversa)
+   - Informa sobre duplicados detectados y omitidos.
 
 ### Paso 6: Generar condensado final (`5-CondensadoFinal.gs`)
 
@@ -135,10 +154,16 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 
 ## 3. Consideraciones y recomendaciones
 
+- **Estructura de carpetas simplificada:**  
+  Las carpetas de los socios deben estar en la misma carpeta principal donde está la hoja de cálculo, sin subcarpetas intermedias. Esto mejora significativamente el rendimiento de los scripts.
 - **Triggers automáticos:**  
   Si configuras triggers para automatización, revisa periódicamente que estén funcionando correctamente en la sección "Ejecuciones" del editor de Apps Script.
 - **Gestión de préstamos:**  
-  El sistema de préstamos está diseñado para ser incremental. Si necesitas regenerar completamente la hoja de préstamos, elimina manualmente el contenido y ejecuta la función nuevamente.
+  El sistema de préstamos está diseñado para ser incremental con detección avanzada de duplicados. Si necesitas regenerar completamente la hoja de préstamos, elimina manualmente el contenido y ejecuta la función nuevamente.
+- **Sistema de avales bidireccional:**  
+  El procesamiento de avales ahora funciona en ambos sentidos, asegurando que toda la información esté sincronizada tanto en las tarjetas de los avales como en las hojas de préstamo de los prestatarios.
+- **Normalización de nombres:**  
+  El script de avales usa normalización avanzada (eliminación de acentos, conversión a mayúsculas) para mejorar la búsqueda y coincidencia de nombres, reduciendo errores por diferencias de formato.
 - **Rendimiento optimizado:**  
   Los scripts usan rangos específicos (como B13:B23) en lugar de columnas completas para mejorar el rendimiento y evitar timeouts.
 - **Permisos de edición y acceso:**  
@@ -149,6 +174,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
   Los scripts optimizados proporcionan reportes detallados en los logs para monitorear el proceso y verificar qué elementos fueron creados vs. existentes.
 - **Nombres y formatos:**  
   El script capitaliza automáticamente el nombre completo en las tarjetas de ahorro.
+- **Búsqueda flexible de avales:**  
+  El sistema de búsqueda inversa de avales tolera variaciones en los nombres, buscando coincidencias con al menos 2 palabras significativas para mayor precisión.
 
 ---
 

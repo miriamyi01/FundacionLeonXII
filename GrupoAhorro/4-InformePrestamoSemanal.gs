@@ -29,15 +29,8 @@ function llenarCondensadoPrestamos() {
     return;
   }
 
-  // Buscar subcarpeta de socios
-  var baseName = sheetCondensado.getRange("A8").getValue().toString().substring(0, 4);
-  var sociosFolderName = baseName + "-SOCIOS AS";
-  var sociosFolders = parentFolder.getFoldersByName(sociosFolderName);
-  if (!sociosFolders.hasNext()) {
-    Logger.log('No se encontró la subcarpeta de socios: ' + sociosFolderName);
-    return;
-  }
-  var sociosMainFolder = sociosFolders.next();
+  // La carpeta principal YA contiene las carpetas de los socios
+  var sociosMainFolder = parentFolder;
 
   // Buscar hoja Prestamos en el condensado
   var sheetPrestamos = ss.getSheetByName('Prestamos');
