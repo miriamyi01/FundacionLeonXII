@@ -117,36 +117,73 @@ function actualizarPermisosProteccion() {
       var hoja = hojas[h];
       var nombreHoja = hoja.getName();
 
-      // Solo procesar si el nombre coincide con los criterios
       if (
         nombreHoja === "Tarjeta Ahorro" ||
         /^Tarjeta Prestamo\s*#?\d*$/i.test(nombreHoja)
       ) {
-        // Eliminar todas las protecciones de rango existentes
         var protections = hoja.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-        for (var p = 0; p < protections.length; p++) {
-          protections[p].remove();
-        }
-
-        // Crear nuevas protecciones igual que el archivo fuente
         var protBaseArr = proteccionesBase[nombreHoja];
         if (!protBaseArr) continue;
+
+        // Crear un mapa para comparar protecciones existentes
+        var existingMap = {};
+        for (var p = 0; p < protections.length; p++) {
+          var prot = protections[p];
+          var key = prot.getRange().getA1Notation();
+          existingMap[key] = prot;
+        }
+
         for (var pb = 0; pb < protBaseArr.length; pb++) {
           var base = protBaseArr[pb];
-          try {
-            var rango = hoja.getRange(base.rangeA1);
-            var nuevaProteccion = rango.protect();
-            nuevaProteccion.setDescription(base.description);
-            nuevaProteccion.setWarningOnly(base.warningOnly);
-            if (!base.warningOnly && base.editors.length > 0) {
-              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
-              nuevaProteccion.addEditors(base.editors);
-            }
-            proteccionesEnArchivo++;
-            proteccionesCopiadas++;
-          } catch (err) {
-            Logger.log("Error copiando protección en hoja " + nombreHoja + " de " + carpetaSocio.getName() + ": " + err);
+          var match = existingMap[base.rangeA1];
+
+          // Función para comparar arrays de editores
+          function arraysEqual(a, b) {
+            if (a.length !== b.length) return false;
+            a = a.slice().sort(); b = b.slice().sort();
+            for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+            return true;
           }
+
+          var needsUpdate = true;
+          if (match) {
+            // Compara descripción, warningOnly y editores
+            var editors = match.getEditors().map(function(u){return u.getEmail();});
+            if (
+              match.getDescription() === base.description &&
+              match.isWarningOnly() === base.warningOnly &&
+              arraysEqual(editors, base.editors)
+            ) {
+              needsUpdate = false; // Ya existe igual, no hacer nada
+            } else {
+              match.remove(); // Si es diferente, eliminarla
+            }
+          }
+
+          if (needsUpdate) {
+            try {
+              var rango = hoja.getRange(base.rangeA1);
+              var nuevaProteccion = rango.protect();
+              nuevaProteccion.setDescription(base.description);
+              nuevaProteccion.setWarningOnly(base.warningOnly);
+              if (!base.warningOnly && base.editors.length > 0) {
+                nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
+                nuevaProteccion.addEditors(base.editors);
+              }
+              proteccionesEnArchivo++;
+              proteccionesCopiadas++;
+            } catch (err) {
+              Logger.log("Error copiando protección en hoja " + nombreHoja + " de " + carpetaSocio.getName() + ": " + err);
+            }
+          }
+        }
+
+        // Elimina protecciones que no están en el archivo fuente
+        for (var p = 0; p < protections.length; p++) {
+          var prot = protections[p];
+          var key = prot.getRange().getA1Notation();
+          var found = protBaseArr.some(function(b){return b.rangeA1 === key;});
+          if (!found) prot.remove();
         }
       }
     }

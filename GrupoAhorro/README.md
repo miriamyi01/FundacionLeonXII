@@ -161,8 +161,11 @@ Si necesitas modificar los permisos de los rangos protegidos (por ejemplo, cambi
 - Cuando necesitas agregar o quitar editores de los rangos protegidos de las hojas "Tarjeta Ahorro" y "Tarjeta Prestamo #n" en todos los archivos de los socios.
 
 ### ¿Qué hace el script?
-- Elimina todas las protecciones de rangos existentes en las hojas "Tarjeta Ahorro" y "Tarjeta Prestamo #n" de cada archivo de socio.
-- Crea nuevas protecciones de rangos exactamente iguales a las del archivo base (`04 TARJETA AHORRO Y PRESTAMO`), incluyendo los mismos rangos, editores, advertencias y descripciones.
+- **Optimización:** El script ahora compara las protecciones existentes en cada archivo de socio con las del archivo base.  
+  Solo elimina y vuelve a crear las protecciones que realmente son diferentes o faltan.  
+  Las protecciones que ya coinciden (mismo rango, descripción, advertencia y editores) se dejan intactas, ahorrando tiempo y evitando agotar los límites de Google Apps Script.
+- Elimina protecciones que no existen en el archivo base.
+- Crea nuevas protecciones exactamente iguales a las del archivo base (`04 TARJETA AHORRO Y PRESTAMO`), incluyendo los mismos rangos, editores, advertencias y descripciones.
 - **No elimina ni modifica el contenido de las celdas, solo actualiza las reglas de protección.**
 
 ### ¿Cómo usarlo?

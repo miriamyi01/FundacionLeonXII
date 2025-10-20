@@ -76,7 +76,6 @@ function renombrarYAgregarHojas() {
     carpetasEncontradas++;
 
     // Extraer iniciales (segunda palabra del nombre de carpeta)
-    // Ej: "GA0452041 VES VIDAL..." -> "VES"
     var parts = carpetaSocio.getName().trim().split(/\s+/);
     var inicialesFromFolder = (parts.length > 1 ? parts[1].replace(/[^A-Za-z]/g, '') : '');
     var inicialesUpper = inicialesFromFolder.toUpperCase();
