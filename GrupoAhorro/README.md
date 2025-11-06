@@ -1,24 +1,26 @@
-# Instrucciones para automatización de carpetas y archivos de socios
+
+# 📂 Instrucciones para automatización de carpetas y archivos de socios
 
 Este proyecto automatiza la creación y llenado de carpetas y archivos para socios usando Google Apps Script y Google Drive.
 
 ---
 
+
 ## 1. Requisitos previos
 
 - **Permisos de acceso:**  
   Antes de ejecutar cualquier script, asegúrate de abrir manualmente cada archivo base (`04 TARJETA AHORRO Y PRESTAMO`) y el archivo de concentrado (la hoja de cálculo principal) para otorgar permisos de acceso a `IMPORTRANGE` y edición si es necesario.  
-  > **Nota:** La primera vez que uses `IMPORTRANGE` en el concentrado, deberás autorizar el acceso a cada archivo de socio. Hazlo manualmente para cada fórmula nueva, después ya no será necesario.
+  > ⚠️ **Nota:** La primera vez que uses `IMPORTRANGE` en el concentrado, deberás autorizar el acceso a cada archivo de socio. Hazlo manualmente para cada fórmula nueva, después ya no será necesario.
 
 - **Archivos base:**  
   El archivo base debe llamarse exactamente:  
   **`04 TARJETA AHORRO Y PRESTAMO`**  
   y debe estar en la carpeta principal de Drive.  
-  > **Importante:** Antes de ejecutar el script, asegúrate de que las celdas protegidas (con fórmulas) en este archivo base estén desbloqueadas o que tengas permisos para editarlas, ya que las copias heredarán estos permisos.
+  > 🔒 **Importante:** Antes de ejecutar el script, asegúrate de que las celdas protegidas (con fórmulas) en este archivo base estén desbloqueadas o que tengas permisos para editarlas, ya que las copias heredarán estos permisos.
 
 - **Estructura de la hoja de cálculo:**  
   - La hoja de cálculo principal debe estar dentro de una carpeta en Google Drive.
-  - **IMPORTANTE:** Las carpetas de los socios deben estar en la misma carpeta principal donde está la hoja de cálculo (sin subcarpetas intermedias).
+  - 🚨 **IMPORTANTE:** Las carpetas de los socios deben estar en la misma carpeta principal donde está la hoja de cálculo (sin subcarpetas intermedias).
   - En la hoja de cálculo, la celda A8 debe tener el código base (por ejemplo, `2024`).
   - Los datos de los socios deben estar en las columnas:
     - A: Número de socio (desde la fila 8)
@@ -28,11 +30,14 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 
 ---
 
+
 ## 2. Flujo de automatización
 
-> **📝 NOTA IMPORTANTE:** Los scripts `1-Carpetas.gs`, `2-InformeInicial.gs`, `3-InformeAhorroSemanal.gs`, `4-InformePrestamoSemanal.gs` y `4.1-Avales.gs` están optimizados para **ejecución múltiple sin duplicados**. Puedes ejecutarlos tantas veces como necesites de forma segura - detectan automáticamente elementos existentes y solo procesan información nueva. Todos proporcionan reportes detallados en los logs para monitorear el proceso.
 
-### Paso 1: Crear carpetas y archivos de socios (`1-Carpetas.gs`)
+> 📝 **NOTA IMPORTANTE:** Los scripts `1-Carpetas.gs`, `2-InformeInicial.gs`, `3-InformeAhorroSemanal.gs`, `4-InformePrestamoSemanal.gs` y `4.1-Avales.gs` están optimizados para **ejecución múltiple sin duplicados**. Puedes ejecutarlos tantas veces como necesites de forma segura - detectan automáticamente elementos existentes y solo procesan información nueva. Todos proporcionan reportes detallados en los logs para monitorear el proceso.
+
+
+### 📁 Paso 1: Crear carpetas y archivos de socios (`1-Carpetas.gs`)
 
 1. **Coloca la hoja de cálculo y el archivo base en la misma carpeta de Google Drive.**
 2. **Abre el editor de Apps Script y pega el código de `1-Carpetas.gs`.**
@@ -43,7 +48,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    - Dentro de cada carpeta de socio, copiará el archivo base y lo renombrará con las iniciales.
    - En cada copia, pondrá el nombre completo (capitalizado) en B1 y el número de socio en D1.
 
-### Paso 2: Registrar socios en el concentrado (`2-InformeInicial.gs`)
+
+### 📝 Paso 2: Registrar socios en el concentrado (`2-InformeInicial.gs`)
 
 1. **Abre el editor de Apps Script y pega el código de `2-InformeInicial.gs`.**
 2. **Ejecuta la función `registrarSociosCondensado`.**
@@ -51,7 +57,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    - Ajusta automáticamente el número de filas y coloca fórmulas `IMPORTRANGE` para importar los datos de inscripción.
    - Solo agrega socios nuevos que no estén ya registrados en el condensado.
 
-### Paso 3: Llenar el informe semanal de ahorros (`3-InformeAhorroSemanal.gs`)
+
+### 💰 Paso 3: Llenar el informe semanal de ahorros (`3-InformeAhorroSemanal.gs`)
 
 1. **Abre el editor de Apps Script y pega el código de `3-InformeAhorroSemanal.gs`.**
 2. **Ejecuta la función `llenarCondensadoAhorros`.**
@@ -63,7 +70,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    - Solo llena hasta la última columna donde aparece "QUINTA" en las semanas de cada mes.
    - **Optimización:** Usa la carpeta principal directamente sin buscar subcarpetas, mejorando el rendimiento.
 
-### Paso 4: Llenar el informe de préstamos semanales (`4-InformePrestamoSemanal.gs`)
+
+### 💸 Paso 4: Llenar el informe de préstamos semanales (`4-InformePrestamoSemanal.gs`)
 
 1. **Abre el editor de Apps Script y pega el código de `4-InformePrestamoSemanal.gs`.**
 2. **Ejecuta la función `llenarCondensadoPrestamos`.**
@@ -79,7 +87,7 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    
    Para que el script detecte automáticamente nuevos préstamos cada día:
    
-   a) **En el editor de Apps Script, ve al menú lateral izquierdo y selecciona "Activadores" (⏰ Triggers).**
+  a) **En el editor de Apps Script, ve al menú lateral izquierdo y selecciona "Activadores" (⏰ Triggers).**
    
    b) **Haz clic en "+ Agregar activador".**
    
@@ -103,7 +111,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    - **Automático:** Se ejecuta sin intervención manual cada día.
    - **Eficiente:** Usa rangos específicos (B13:B23, D13:D23, etc.) para mejor rendimiento.
 
-### Paso 5: Procesar avales (`4.1-Avales.gs`)
+
+### 🤝 Paso 5: Procesar avales (`4.1-Avales.gs`)
 
 1. **Abre el editor de Apps Script y pega el código de `4.1-Avales.gs`.**
 2. **Ejecuta la función `procesarAvales`.**
@@ -143,7 +152,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
      - Avales procesados de prestatario a aval (búsqueda inversa)
    - Informa sobre duplicados detectados y omitidos.
 
-### Paso 6: Generar condensado final (`5-CondensadoFinal.gs`)
+
+### 📊 Paso 6: Generar condensado final (`5-CondensadoFinal.gs`)
 
 1. **Abre el editor de Apps Script y pega el código de `5-CondensadoFinal.gs`.**
 2. **Ejecuta la función correspondiente para generar el reporte final.**
@@ -152,15 +162,40 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 
 ---
 
+## 0. Migración desde la estructura antigua (scripts 0.x)
+
+Si estás migrando desde una estructura o archivos antiguos hacia la estructura actual del proyecto, hay tres scripts auxiliares numerados como `0.x` cuyo objetivo es facilitar esa migración automática cuando los archivos nuevos no existen todavía.
+
+Archivos y propósito rápido:
+- `0.1-CarpetasInscripción.gs` — Escanea la carpeta principal (la misma que contiene el concentrado) y rellena la hoja `Inscripción` con la lista de carpetas de socios existentes (carpetas que empiezan por `GA...` o por el código de socio). Extrae número, nombres y apellidos desde el nombre de la carpeta y los escribe empezando en la fila 8. Útil si las carpetas ya existen pero no el `03 LISTA DE INSCRIPCION` o la hoja `Inscripción` está vacía.
+- `0.2-ActualizacionHoja.gs` — Abre el archivo `03 LISTA DE INSCRIPCION` (debe estar en la misma carpeta principal), recorre las filas de la hoja `Inscripción` y para cada socio busca la carpeta correspondiente. Dentro de la carpeta del socio copia las hojas base (por ejemplo `Tarjeta Ahorro`) desde el concentrado hacia el archivo individual del socio, evita duplicados, actualiza B1/D1 en `Tarjeta Ahorro` y renombra el archivo de cada socio con el formato `(INICIALES) - TARJETA AHORRO Y PRESTAMO`.
+- `0.3-ActualizacionPermisos.gs` — Copia las protecciones de rango (rango, descripción, warningOnly y editores) de las hojas `Tarjeta Ahorro` y `Tarjeta Prestamo #n` del archivo base (`04 TARJETA AHORRO Y PRESTAMO`) hacia los archivos de cada socio. Compara para no recrear protecciones idénticas y elimina protecciones en los archivos de socio que ya no existan en el archivo base.
+
+Orden recomendado de ejecución (cuando migras desde lo antiguo):
+1. Abrir el archivo base (`04 TARJETA AHORRO Y PRESTAMO`) y el concentrado en el editor de Apps Script para autorizar accesos si es necesario.
+2. Ejecutar `0.1-CarpetasInscripción.gs` → función `llenarHojaInscripcion()` para generar/llenar la hoja `Inscripción` con las carpetas existentes.
+3. Ejecutar `0.2-ActualizacionHoja.gs` → función `renombrarYAgregarHojas()` para copiar las hojas base a cada archivo de socio y renombrar archivos.
+4. Ejecutar `0.3-ActualizacionPermisos.gs` → función `actualizarPermisosProteccion()` para propagar las protecciones de rango desde el archivo base a los archivos de socio.
+
+Precauciones y notas:
+- Haz un respaldo antes de ejecutar los scripts en bloque. Los scripts editan archivos y protecciones en masa.
+- Asegúrate de abrir manualmente los archivos que usan `IMPORTRANGE` la primera vez para autorizar el acceso.
+- Los scripts asumen que las carpetas de los socios están en la misma carpeta principal que el concentrado (sin subcarpetas intermedias).
+- Si tu estructura de nombres es distinta (por ejemplo las carpetas no empiezan por el número de socio seguido de un espacio), ajusta las condiciones de búsqueda en los scripts antes de ejecutarlos.
+- Ejecuta los scripts en el orden indicado y revisa los logs de Apps Script para ver el detalle de lo realizado.
+
+
 ## 2.1. Actualización de permisos de rangos protegidos en archivos de socios
 
 Si necesitas modificar los permisos de los rangos protegidos (por ejemplo, cambiar o agregar editores) en todos los archivos de los socios, puedes automatizar este proceso usando el script `ActualizacionPermisos.gs`.
 
-### ¿Cuándo usarlo?
+
+### ⏰ ¿Cuándo usarlo?
 - Cuando cambias los permisos de los rangos protegidos en el archivo base (`04 TARJETA AHORRO Y PRESTAMO`) y quieres que esos mismos permisos se apliquen en todos los archivos de los socios.
 - Cuando necesitas agregar o quitar editores de los rangos protegidos de las hojas "Tarjeta Ahorro" y "Tarjeta Prestamo #n" en todos los archivos de los socios.
 
-### ¿Qué hace el script?
+
+### ⚡ ¿Qué hace el script?
 - **Optimización:** El script ahora compara las protecciones existentes en cada archivo de socio con las del archivo base.  
   Solo elimina y vuelve a crear las protecciones que realmente son diferentes o faltan.  
   Las protecciones que ya coinciden (mismo rango, descripción, advertencia y editores) se dejan intactas, ahorrando tiempo y evitando agotar los límites de Google Apps Script.
@@ -168,7 +203,8 @@ Si necesitas modificar los permisos de los rangos protegidos (por ejemplo, cambi
 - Crea nuevas protecciones exactamente iguales a las del archivo base (`04 TARJETA AHORRO Y PRESTAMO`), incluyendo los mismos rangos, editores, advertencias y descripciones.
 - **No elimina ni modifica el contenido de las celdas, solo actualiza las reglas de protección.**
 
-### ¿Cómo usarlo?
+
+### 🛠️ ¿Cómo usarlo?
 1. **Actualiza los permisos de los rangos protegidos en el archivo base (`04 TARJETA AHORRO Y PRESTAMO`) como desees.**
 2. **Abre el archivo base y ve a Extensiones > Apps Script.**
 3. **Pega el código de `ActualizacionPermisos.gs` y ejecuta la función `actualizarPermisosProteccion()`.**
@@ -178,6 +214,7 @@ Si necesitas modificar los permisos de los rangos protegidos (por ejemplo, cambi
 > **Nota:** Solo se modifican las hojas que se llamen exactamente "Tarjeta Ahorro" o que empiecen con "Tarjeta Prestamo" (por ejemplo, "Tarjeta Prestamo #1", "Tarjeta Prestamo #2", etc.).
 
 ---
+
 
 ## 3. Consideraciones y recomendaciones
 
@@ -205,6 +242,7 @@ Si necesitas modificar los permisos de los rangos protegidos (por ejemplo, cambi
   El sistema de búsqueda inversa de avales tolera variaciones en los nombres, buscando coincidencias con al menos 2 palabras significativas para mayor precisión.
 
 ---
+
 
 ## 4. Contacto
 
