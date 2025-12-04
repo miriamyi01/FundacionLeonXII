@@ -5,7 +5,7 @@ Esta carpeta contiene los scripts y plantillas para automatizar la gestión de v
 ## 📂 ¿Qué hay en esta carpeta?
 
 - **1-ActualizaciónBase.gs**: Agrega automáticamente las columnas y fórmulas del año siguiente en la hoja "Base Vacaciones".
-- **2-ArchivosAnuales.gs**: Genera archivos individuales de vacaciones para cada colaborador y actualiza el índice anual.
+- **2-ArchivosAnuales.gs**: Genera archivos individuales de vacaciones para cada colaborador y actualiza el índice anual. Si el archivo ya existe, solo actualiza los datos vacíos y asigna permisos/protecciones el día de aniversario.
 - **Aniversario/CorreoAniversario.html**: Plantilla de correo para felicitar en aniversarios, mostrando nombre, años y periodo vacacional.
 - **Aniversario/TriggerAniversario.gs**: Envía correos de aniversario y notifica al jefe directo, calculando días de vacaciones según antigüedad.
 
@@ -14,8 +14,12 @@ Esta carpeta contiene los scripts y plantillas para automatizar la gestión de v
 ## ⚡ ¿Cómo usar los scripts?
 
 1. Ejecuta `1-ActualizaciónBase.gs` en la hoja "Base Vacaciones" para preparar el año siguiente.
-2. Ejecuta `2-ArchivosAnuales.gs` para crear los archivos individuales y actualizar el índice anual.
-3. La hoja "Aniversarios_AAAA" (AAA es el año actual) se crea automáticamente dentro del archivo `001 - Índice: Archivo de vacaciones` de la carpeta principal al ejecutar `2-ArchivosAnuales.gs`. Incluye los datos:
+2. Ejecuta `2-ArchivosAnuales.gs` para crear los archivos individuales y actualizar el índice anual.  
+   - El script verifica si el archivo de vacaciones ya existe en la carpeta del año objetivo. Si existe, solo actualiza los datos vacíos en las hojas correspondientes.
+   - Los permisos de edición y las protecciones de rangos solo se asignan el día de aniversario del colaborador.
+   - La hoja "Aniversarios_AAAA" se actualiza eliminando hojas antiguas (más de 10 años) y agregando solo colaboradores nuevos.
+   - El formato y las filas de la hoja de aniversarios se ajustan automáticamente para evitar errores.
+3. La hoja "Aniversarios_AAAA" (AAA es el año actual) se crea o actualiza automáticamente dentro del archivo `001 - Índice: Archivo de vacaciones` al ejecutar `2-ArchivosAnuales.gs`. Incluye los datos:
    - Correo
    - Fecha de ingreso
    - Link al archivo de vacaciones
@@ -44,6 +48,7 @@ Esta carpeta contiene los scripts y plantillas para automatizar la gestión de v
 - El cálculo de días de vacaciones está automatizado según la antigüedad, pero puedes ajustar la tabla en el script si cambian las políticas.
 - Personaliza los textos y la plantilla HTML si lo deseas.
 - Consulta los comentarios en cada script para entender y adaptar el proceso.
+- El script ahora solo asigna permisos y protecciones el día de aniversario, y actualiza datos vacíos si el archivo ya existe.
 
 ## 🛠️ Sobre el trigger de aniversario
 

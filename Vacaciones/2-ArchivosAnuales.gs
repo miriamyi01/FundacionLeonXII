@@ -1,4 +1,4 @@
-function crearArchivosVacacionesTodoEnUno() {
+function archivosVacaciones() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const baseSheet = ss.getSheetByName('Base Vacaciones');
   const vacacionesSheet = ss.getSheetByName('Vacaciones');
@@ -38,10 +38,11 @@ function crearArchivosVacacionesTodoEnUno() {
   const socios = data.slice(1).filter(row => row[headers.indexOf('Fecha de ingreso')]);
   Logger.log('Socios encontrados: ' + socios.length);
 
-  // Procesar todos los socios
+  // Procesar solo socios con Fecha de ingreso no vacía
   let archivosSocios = [];
   for (let s = 0; s < socios.length; s++) {
     const row = socios[s];
+    if (!row[headers.indexOf('Fecha de ingreso')]) continue; // <-- Solo si tiene fecha de ingreso
     try {
       // Código de socio a 3 dígitos
       const codigo = row[headers.indexOf('Código')].toString().padStart(3, '0');
@@ -57,6 +58,11 @@ function crearArchivosVacacionesTodoEnUno() {
       );
       const empleado = row[headers.indexOf('Empleado')];
       const antiguedad = row[headers.indexOf(`Años de antigüedad a ${yearObjetivo}`)];
+      // Si la antigüedad es 0, no crear archivo de vacaciones
+      if (Number(antiguedad) === 0) {
+        Logger.log('Socio con antigüedad 0, no se crea archivo.');
+        continue;
+      }
       const vacacionesAniv = row[headers.indexOf(`Vacaciones a partir de aniversario ${yearObjetivo}`)];
       const fechaAniv = row[headers.indexOf(`Fecha aniversario ${yearObjetivo}`)];
       const lider = row[headers.indexOf('Líder')];
@@ -107,6 +113,7 @@ function crearArchivosVacacionesTodoEnUno() {
       }
 
       let nuevoArchivo;
+      Logger.log(`Procesando socio idx ${s}: ${row[headers.indexOf('Empleado')]} (${codigo})`);
       if (!archivoYaExiste) {
         nuevoArchivo = SpreadsheetApp.create(nombreArchivo);
         folder.addFile(DriveApp.getFileById(nuevoArchivo.getId()));
@@ -139,44 +146,13 @@ function crearArchivosVacacionesTodoEnUno() {
         vacSheet.getRange('J3').setValue(vacacionesAniv);
         vacSheet.getRange('J4').setValue(fechaAnivStr);
         vacSheet.getRange('J5').setValue(fechaVencimientoStr);
+        // Poner nombre del líder en G11
+        vacSheet.getRange('G11').setValue(lider);
 
         // Llenar datos en hoja Reposición
         const repSheet = nuevoArchivo.getSheetByName('Reposición de días');
         repSheet.getRange('C1').setDataValidation(null);
         repSheet.getRange('C1').setValue(empleado); // Nombre en C1
-
-        // Copiar rangos protegidos y permisos VACACIONES
-        {
-          const protecciones = vacacionesSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-          protecciones.forEach(p => {
-            const rango = p.getRange();
-            const nuevaProteccion = vacSheet.getRange(rango.getA1Notation()).protect();
-            nuevaProteccion.setDescription(p.getDescription());
-            // Permiso al colaborador para su propio archivo
-            if (p.getDescription().indexOf('AGREGAR CORREO: CADA COLABORADOR VACACIONES') !== -1) {
-              nuevaProteccion.addEditor(correoColaborador);
-            }
-            if (p.getDescription().indexOf('AGREGAR CORREO: LIDER VACACIONES') !== -1) {
-              nuevaProteccion.addEditor(correoLider);
-            }
-          });
-        }
-        // Copiar rangos protegidos y permisos REPOSICION
-        {
-          const protecciones = reposicionSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-          protecciones.forEach(p => {
-            const rango = p.getRange();
-            const nuevaProteccion = repSheet.getRange(rango.getA1Notation()).protect();
-            nuevaProteccion.setDescription(p.getDescription());
-            // Permiso al colaborador para su propio archivo
-            if (p.getDescription().indexOf('AGREGAR CORREO: CADA COLABORADOR REPOSICION') !== -1) {
-              nuevaProteccion.addEditor(correoColaborador);
-            }
-            if (p.getDescription().indexOf('AGREGAR CORREO: LIDER REPOSICION') !== -1) {
-              nuevaProteccion.addEditor(correoLider);
-            }
-          });
-        }
 
         archivosSocios.push({
           codigoZona: codigoZona,
@@ -207,6 +183,7 @@ function crearArchivosVacacionesTodoEnUno() {
           vacSheet.getRange('J3').setValue(vacacionesAniv);
           vacSheet.getRange('J4').setValue(fechaAnivStr);
           vacSheet.getRange('J5').setValue(fechaVencimientoStr);
+          vacSheet.getRange('G11').setValue(lider);
         }
         const repSheet = nuevoArchivo.getSheetByName('Reposición de días');
         if (repSheet.getRange('C1').getValue() == "") {
@@ -228,6 +205,115 @@ function crearArchivosVacacionesTodoEnUno() {
           url: nuevoArchivo.getUrl()
         });
       }
+
+      // SIEMPRE ejecutar permisos y logs, tanto si es nuevo como si ya existe
+      const vacSheet = nuevoArchivo.getSheetByName('Vacaciones');
+      const repSheet = nuevoArchivo.getSheetByName('Reposición de días');
+
+      // SOLO el día de aniversario comparte y asigna rangos
+      const hoy = new Date();
+      hoy.setHours(0,0,0,0);
+      const aniversario = new Date(fechaAnivDate);
+      aniversario.setHours(0,0,0,0);
+
+      if (hoy.getTime() === aniversario.getTime()) {
+        // Compartir archivo como editor para que tengan acceso
+        if (correoColaborador) {
+          nuevoArchivo.addEditor(correoColaborador);
+          Logger.log(`Se agregó acceso de editor al archivo para colaborador: ${correoColaborador}`);
+        }
+        if (correoLider) {
+          nuevoArchivo.addEditor(correoLider);
+          Logger.log(`Se agregó acceso de editor al archivo para líder: ${correoLider}`);
+        }
+        
+        // Copiar rangos protegidos y editores de la hoja original de Vacaciones
+        {
+          const proteccionesOriginales = vacacionesSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+          Logger.log(`VACACIONES: Protecciones originales encontradas: ${proteccionesOriginales.length}`);
+          vacSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(p => p.remove());
+          proteccionesOriginales.forEach(function(p, idx) {
+            const rango = p.getRange();
+            const descripcion = p.getDescription();
+            Logger.log(`VACACIONES: Copiando protección #${idx+1} - Rango: ${rango.getA1Notation()}, Descripción: "${descripcion}"`);
+            const nuevaProteccion = vacSheet.getRange(rango.getA1Notation()).protect();
+            nuevaProteccion.setDescription(descripcion);
+
+            if (descripcion === 'AGREGAR CORREO: CADA COLABORADOR VACACIONES') {
+              // Originales + colaborador
+              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
+              p.getEditors().forEach(function(editor) {
+                nuevaProteccion.addEditor(editor);
+              });
+              if (correoColaborador) {
+                nuevaProteccion.addEditor(correoColaborador);
+                Logger.log(`VACACIONES: Permiso otorgado: colaborador (${correoColaborador}) en rango ${rango.getA1Notation()}`);
+              }
+            } else if (descripcion === 'AGREGAR CORREO: LIDER VACACIONES') {
+              // Originales + líder
+              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
+              p.getEditors().forEach(function(editor) {
+                nuevaProteccion.addEditor(editor);
+              });
+              if (correoLider) {
+                nuevaProteccion.addEditor(correoLider);
+                Logger.log(`VACACIONES: Permiso otorgado: líder (${correoLider}) en rango ${rango.getA1Notation()}`);
+              }
+            } else {
+              // Solo copia los editores originales para los demás rangos
+              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
+              p.getEditors().forEach(function(editor) {
+                nuevaProteccion.addEditor(editor);
+              });
+            }
+          });
+        }
+
+        // Copiar rangos protegidos y editores de la hoja original de Reposición
+        {
+          const proteccionesOriginales = reposicionSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+          Logger.log(`REPOSICION: Protecciones originales encontradas: ${proteccionesOriginales.length}`);
+          repSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(p => p.remove());
+          proteccionesOriginales.forEach(function(p, idx) {
+            const rango = p.getRange();
+            const descripcion = p.getDescription();
+            Logger.log(`REPOSICION: Copiando protección #${idx+1} - Rango: ${rango.getA1Notation()}, Descripción: "${descripcion}"`);
+            const nuevaProteccion = repSheet.getRange(rango.getA1Notation()).protect();
+            nuevaProteccion.setDescription(descripcion);
+
+            if (descripcion === 'AGREGAR CORREO: CADA COLABORADOR REPOSICION') {
+              // Originales + colaborador
+              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
+              p.getEditors().forEach(function(editor) {
+                nuevaProteccion.addEditor(editor);
+              });
+              if (correoColaborador) {
+                nuevaProteccion.addEditor(correoColaborador);
+                Logger.log(`REPOSICION: Permiso otorgado: colaborador (${correoColaborador}) en rango ${rango.getA1Notation()}`);
+              }
+            } else if (descripcion === 'AGREGAR CORREO: LIDER REPOSICION') {
+              // Originales + líder
+              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
+              p.getEditors().forEach(function(editor) {
+                nuevaProteccion.addEditor(editor);
+              });
+              if (correoLider) {
+                nuevaProteccion.addEditor(correoLider);
+                Logger.log(`REPOSICION: Permiso otorgado: líder (${correoLider}) en rango ${rango.getA1Notation()}`);
+              }
+            } else {
+              // Solo copia los editores originales para los demás rangos
+              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
+              p.getEditors().forEach(function(editor) {
+                nuevaProteccion.addEditor(editor);
+              });
+            }
+          });
+        }
+      } else {
+        Logger.log('No se otorgaron permisos ni rangos porque hoy no es el día de aniversario');
+      }
+
     } catch (e) {
       Logger.log('Error creando archivo socio idx ' + s + ': ' + e);
     }
@@ -240,31 +326,69 @@ function crearArchivosVacacionesTodoEnUno() {
     if (filesPadre.hasNext()) {
       const indiceFile = filesPadre.next();
       const ssIndice = SpreadsheetApp.openById(indiceFile.getId());
-      // Buscar hoja actual (la primera)
-      const hojaActual = ssIndice.getSheets()[0];
-      // Duplicar hoja
-      const hojaNueva = hojaActual.copyTo(ssIndice);
-      hojaNueva.setName(`Aniversarios_${yearObjetivo}`);
-      // Borrar datos desde fila 5 en adelante
-      const lastRow = hojaNueva.getLastRow();
-      if (lastRow >= 5) {
-        hojaNueva.deleteRows(5, lastRow - 4);
+
+      // Eliminar hojas Aniversarios_{año} donde año < yearObjetivo - 10
+      const limite = yearObjetivo - 10;
+      ssIndice.getSheets().forEach(sheet => {
+        const match = sheet.getName().match(/^Aniversarios_(\d{4})$/);
+        if (match) {
+          const anio = parseInt(match[1], 10);
+          if (anio < limite) {
+            ssIndice.deleteSheet(sheet);
+            Logger.log(`Hoja eliminada: ${sheet.getName()}`);
+          }
+        }
+      });
+
+      let hojaNueva = ssIndice.getSheetByName(`Aniversarios_${yearObjetivo}`);
+      if (!hojaNueva) {
+        // Buscar hoja actual (la primera)
+        const hojaActual = ssIndice.getSheets()[0];
+        hojaNueva = hojaActual.copyTo(ssIndice);
+        hojaNueva.setName(`Aniversarios_${yearObjetivo}`);
+        // Borrar datos desde fila 5 en adelante
+        const lastRow = hojaNueva.getLastRow();
+        if (lastRow >= 5) {
+          hojaNueva.deleteRows(5, lastRow - 4);
+        }
+        // Formato especial para columnas
+        hojaNueva.getRange(1, 1, 1, 10).setHorizontalAlignment('center');
+        hojaNueva.getRange(2, 1, hojaNueva.getMaxRows() - 1, 4).setFontWeight('bold');
+        hojaNueva.getRange(2, 1, hojaNueva.getMaxRows() - 1, 5).setHorizontalAlignment('center');
+        hojaNueva.getRange(2, 6, hojaNueva.getMaxRows() - 1, 5).setHorizontalAlignment('left');
+        hojaNueva.getRange(2, 1, hojaNueva.getMaxRows() - 1, 10).setBorder(true, true, true, true, true, true, '#002147', SpreadsheetApp.BorderStyle.SOLID);
       }
 
       // Ordenar archivosSocios por zona y por ID
       archivosSocios.sort(function(a, b) {
-        // Extraer número de zona (Z02 -> 2, Z13 -> 13)
         const zonaA = parseInt(a.codigoZona.replace('Z', ''), 10);
         const zonaB = parseInt(b.codigoZona.replace('Z', ''), 10);
         if (zonaA !== zonaB) {
           return zonaA - zonaB;
         }
-        // Si zona igual, ordenar por idColaborador (número)
         return parseInt(a.idColaborador, 10) - parseInt(b.idColaborador, 10);
       });
 
-      // Insertar datos de colaboradores faltantes
+
+
+      // Asegura que la hoja tenga al menos 5 filas antes de buscar o escribir
+      if (hojaNueva.getMaxRows() < 5) {
+        hojaNueva.insertRowsAfter(hojaNueva.getMaxRows(), 5 - hojaNueva.getMaxRows());
+      }
+
+      // Obtener todos los IDs de colaboradores ya presentes en la hoja (solo si hay filas suficientes)
+      let idsExistentes = [];
+      const lastRow = hojaNueva.getLastRow();
+      if (lastRow >= 5) {
+        idsExistentes = hojaNueva.getRange(5, 4, lastRow - 4, 1).getValues()
+          .map(val => val[0] ? val[0].toString() : "");
+      }
+
+      let nuevosAgregados = 0;
       archivosSocios.forEach((socio) => {
+        // Si el colaborador ya está, no lo agregues
+        if (idsExistentes.includes(socio.idColaborador)) return;
+
         // Formatea la fecha de ingreso en dd/MM/yyyy para el condensado
         let fechaIngresoCondensado = "";
         if (socio.fechaIngreso) {
@@ -277,49 +401,59 @@ function crearArchivosVacacionesTodoEnUno() {
             }
           }
         }
-        // Calcula la siguiente fila vacía en el índice
-        let filaDestino = hojaNueva.getLastRow() + 1;
-        if (filaDestino < 5) filaDestino = 5;
-        // Asegura que hay suficientes filas
-        if (hojaNueva.getMaxRows() < filaDestino) {
-          hojaNueva.insertRowsAfter(hojaNueva.getMaxRows(), filaDestino - hojaNueva.getMaxRows());
-        }
-        hojaNueva.getRange(filaDestino, 1, 1, 9).setValues([
-          [
-            socio.codigoZona,
-            fechaIngresoCondensado,
-            socio.nombreOficina,
-            socio.idColaborador,
-            socio.siglasColaborador,
-            socio.colaborador,
-            socio.correo,
-            socio.jefeDirecto,
-            socio.correoJefeDirecto,
-          ]
-        ]);
-        hojaNueva.getRange(filaDestino, 10).setValue(socio.url);
-        // Formato: Lato 12, fondo blanco
-        hojaNueva.getRange(filaDestino, 1, 1, 10).setFontFamily('Lato');
-        hojaNueva.getRange(filaDestino, 1, 1, 10).setFontSize(12);
-        hojaNueva.getRange(filaDestino, 1, 1, 10).setBackground('#FFFFFF');
-      });
-      // Formato especial para columnas
-      // Encabezados (primera fila): centrados
-      hojaNueva.getRange(1, 1, 1, 10).setHorizontalAlignment('center');
-      // Primeras 4 columnas en negritas (todas las filas menos encabezado)
-      hojaNueva.getRange(2, 1, hojaNueva.getMaxRows() - 1, 4).setFontWeight('bold');
-      // Todas las filas centradas en las primeras 5 columnas (menos encabezado)
-      hojaNueva.getRange(2, 1, hojaNueva.getMaxRows() - 1, 5).setHorizontalAlignment('center');
-      // Resto de columnas (6 a 10) alineadas a la izquierda (menos encabezado)
-      hojaNueva.getRange(2, 6, hojaNueva.getMaxRows() - 1, 5).setHorizontalAlignment('left');
-      // Bordes azul oscuro en todas las celdas menos encabezado
-      hojaNueva.getRange(2, 1, hojaNueva.getMaxRows() - 1, 10).setBorder(true, true, true, true, true, true, '#002147', SpreadsheetApp.BorderStyle.SOLID);
 
-      Logger.log('Hoja índice duplicada, renombrada y llenada con colaboradores faltantes');
+        // Busca la primera fila vacía a partir de la fila 5
+        let filaDestino = 5;
+        const maxRows = hojaNueva.getMaxRows();
+        const lastRow = hojaNueva.getLastRow();
+        let foundEmpty = false;
+        for (let i = 5; i <= lastRow; i++) {
+          const celda = hojaNueva.getRange(i, 4).getValue();
+          if (!celda) {
+            filaDestino = i;
+            foundEmpty = true;
+            break;
+          }
+        }
+        if (!foundEmpty) {
+          filaDestino = lastRow + 1;
+        }
+
+        // Asegura que hay suficientes filas (si la hoja está vacía o se requiere agregar)
+        if (maxRows < filaDestino) {
+          hojaNueva.insertRowsAfter(maxRows, filaDestino - maxRows);
+        }
+
+        // Solo escribe si la fila destino es válida (mayor o igual a 5)
+        if (filaDestino >= 5) {
+          hojaNueva.getRange(filaDestino, 1, 1, 9).setValues([
+            [
+              socio.codigoZona,
+              fechaIngresoCondensado,
+              socio.nombreOficina,
+              socio.idColaborador,
+              socio.siglasColaborador,
+              socio.colaborador,
+              socio.correo,
+              socio.jefeDirecto,
+              socio.correoJefeDirecto,
+            ]
+          ]);
+          hojaNueva.getRange(filaDestino, 10).setValue(socio.url);
+          hojaNueva.getRange(filaDestino, 1, 1, 10).setFontFamily('Lato');
+          hojaNueva.getRange(filaDestino, 1, 1, 10).setFontSize(12);
+          hojaNueva.getRange(filaDestino, 1, 1, 10).setBackground('#FFFFFF');
+        }
+        nuevosAgregados++;
+      });
+
+      if (nuevosAgregados > 0) {
+        Logger.log(`Hoja índice actualizada. Colaboradores agregados: ${nuevosAgregados}`);
+      }
     } else {
       Logger.log('No se encontró archivo índice para duplicar');
     }
   } catch (e) {
-    Logger.log('Error duplicando hoja índice: ' + e);
+    Logger.log('Error actualizando hoja índice: ' + e);
   }
 }

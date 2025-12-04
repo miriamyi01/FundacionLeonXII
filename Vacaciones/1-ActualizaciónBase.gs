@@ -1,4 +1,4 @@
-function ActualizaciónBase() {
+function actualizaciónBase() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("Base Vacaciones");
   if (!sheet) return;
