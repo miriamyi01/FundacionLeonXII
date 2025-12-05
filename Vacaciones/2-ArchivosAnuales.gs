@@ -378,9 +378,9 @@ function archivosVacaciones() {
 
       // Obtener todos los IDs de colaboradores ya presentes en la hoja (solo si hay filas suficientes)
       let idsExistentes = [];
-      const lastRow = hojaNueva.getLastRow();
-      if (lastRow >= 5) {
-        idsExistentes = hojaNueva.getRange(5, 4, lastRow - 4, 1).getValues()
+      const lastRowAniv = hojaNueva.getLastRow();
+      if (lastRowAniv >= 5) {
+        idsExistentes = hojaNueva.getRange(5, 4, lastRowAniv - 4, 1).getValues()
           .map(val => val[0] ? val[0].toString() : "");
       }
 
@@ -405,9 +405,9 @@ function archivosVacaciones() {
         // Busca la primera fila vacía a partir de la fila 5
         let filaDestino = 5;
         const maxRows = hojaNueva.getMaxRows();
-        const lastRow = hojaNueva.getLastRow();
+        // Usa lastRowAniv en vez de lastRow
         let foundEmpty = false;
-        for (let i = 5; i <= lastRow; i++) {
+        for (let i = 5; i <= lastRowAniv; i++) {
           const celda = hojaNueva.getRange(i, 4).getValue();
           if (!celda) {
             filaDestino = i;
@@ -416,7 +416,7 @@ function archivosVacaciones() {
           }
         }
         if (!foundEmpty) {
-          filaDestino = lastRow + 1;
+          filaDestino = lastRowAniv + 1;
         }
 
         // Asegura que hay suficientes filas (si la hoja está vacía o se requiere agregar)
@@ -446,6 +446,13 @@ function archivosVacaciones() {
         }
         nuevosAgregados++;
       });
+
+      // Agrega borde negro sólido a todas las celdas desde la fila 3
+      if (lastRowAniv >= 3) {
+        hojaNueva.getRange(3, 1, lastRowAniv - 2, 10).setBorder(
+          true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID
+        );
+      }
 
       if (nuevosAgregados > 0) {
         Logger.log(`Hoja índice actualizada. Colaboradores agregados: ${nuevosAgregados}`);
