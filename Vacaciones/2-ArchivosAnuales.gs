@@ -116,6 +116,7 @@ function archivosVacaciones() {
       Logger.log(`Procesando socio idx ${s}: ${row[headers.indexOf('Empleado')]} (${codigo})`);
       if (!archivoYaExiste) {
         nuevoArchivo = SpreadsheetApp.create(nombreArchivo);
+
         folder.addFile(DriveApp.getFileById(nuevoArchivo.getId()));
         Logger.log(`Archivo creado: ${nombreArchivo}`);
 
@@ -123,6 +124,39 @@ function archivosVacaciones() {
         copiaVacaciones.setName('Vacaciones');
         let copiaReposicion = reposicionSheet.copyTo(nuevoArchivo);
         copiaReposicion.setName('Reposición de días');
+
+        // Copiar formatos condicionales
+        try {
+          // Copiar SOLO las reglas que usan rangos de la hoja copiada (no de la hoja original)
+          // Esto es necesario porque copyTo crea una hoja con un nuevo ID y las reglas deben apuntar a la hoja destino
+          function copiarReglasCondicionales(origen, destino) {
+            // Mapear los rangos de la hoja original a la hoja destino
+            const reglas = origen.getConditionalFormatRules();
+            const reglasFiltradas = [];
+            reglas.forEach(r => {
+              // Solo reglas cuyos rangos están todos en la hoja original
+              const origenRanges = r.getRanges();
+              if (origenRanges.every(range => range.getSheet().getName() === origen.getName())) {
+                // Crear nuevos rangos en la hoja destino con el mismo A1Notation
+                const nuevosRanges = origenRanges.map(range => destino.getRange(range.getA1Notation()));
+                // Clonar la regla y asignar los nuevos rangos
+                const builder = r.copy();
+                builder.setRanges(nuevosRanges);
+                reglasFiltradas.push(builder.build());
+              }
+            });
+            destino.setConditionalFormatRules(reglasFiltradas);
+          }
+
+          copiarReglasCondicionales(vacacionesSheet, copiaVacaciones);
+          copiarReglasCondicionales(reposicionSheet, copiaReposicion);
+        } catch (e) {
+          Logger.log('Error copiando formatos condicionales: ' + e);
+        }
+
+        // Configura el idioma y zona horaria en español/México DESPUÉS de copiar hojas y reglas
+        nuevoArchivo.setSpreadsheetLocale('es');
+        nuevoArchivo.setSpreadsheetTimeZone('America/Mexico_City');
 
         // Eliminar hoja por defecto (solo si hay más de una hoja)
         const hojas = nuevoArchivo.getSheets();
@@ -141,7 +175,7 @@ function archivosVacaciones() {
         vacSheet.getRange('C1').setValue(empleado); // Nombre en C1
         vacSheet.getRange('I1').setValue(codigo);
         vacSheet.getRange('K1').setValue(iniciales);
-        vacSheet.getRange('C3').setValue(fechaIngresoStr); // <-- formato solo "9 de enero de 2025"
+        vacSheet.getRange('C3').setValue(fechaIngresoStr);
         vacSheet.getRange('C4').setValue(antiguedad);
         vacSheet.getRange('J3').setValue(vacacionesAniv);
         vacSheet.getRange('J4').setValue(fechaAnivStr);
@@ -178,7 +212,7 @@ function archivosVacaciones() {
           vacSheet.getRange('C1').setValue(empleado); // Nombre en C1
           vacSheet.getRange('I1').setValue(codigo);
           vacSheet.getRange('K1').setValue(iniciales);
-          vacSheet.getRange('C3').setValue(fechaIngresoStr); // <-- formato solo "9 de enero de 2025"
+          vacSheet.getRange('C3').setValue(fechaIngresoStr);
           vacSheet.getRange('C4').setValue(antiguedad);
           vacSheet.getRange('J3').setValue(vacacionesAniv);
           vacSheet.getRange('J4').setValue(fechaAnivStr);
@@ -407,7 +441,7 @@ function archivosVacaciones() {
         const maxRows = hojaNueva.getMaxRows();
         // Usa lastRowAniv en vez de lastRow
         let foundEmpty = false;
-        for (let i = 5; i <= lastRowAniv; i++) {
+        for (let i = 5; i <= hojaNueva.getLastRow(); i++) {
           const celda = hojaNueva.getRange(i, 4).getValue();
           if (!celda) {
             filaDestino = i;
@@ -416,7 +450,7 @@ function archivosVacaciones() {
           }
         }
         if (!foundEmpty) {
-          filaDestino = lastRowAniv + 1;
+          filaDestino = hojaNueva.getLastRow() + 1;
         }
 
         // Asegura que hay suficientes filas (si la hoja está vacía o se requiere agregar)
@@ -443,16 +477,11 @@ function archivosVacaciones() {
           hojaNueva.getRange(filaDestino, 1, 1, 10).setFontFamily('Lato');
           hojaNueva.getRange(filaDestino, 1, 1, 10).setFontSize(12);
           hojaNueva.getRange(filaDestino, 1, 1, 10).setBackground('#FFFFFF');
+          // ACTUALIZA idsExistentes para evitar sobrescribir en la siguiente iteración
+          idsExistentes.push(socio.idColaborador);
         }
         nuevosAgregados++;
       });
-
-      // Agrega borde negro sólido a todas las celdas desde la fila 3
-      if (lastRowAniv >= 3) {
-        hojaNueva.getRange(3, 1, lastRowAniv - 2, 10).setBorder(
-          true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID
-        );
-      }
 
       if (nuevosAgregados > 0) {
         Logger.log(`Hoja índice actualizada. Colaboradores agregados: ${nuevosAgregados}`);
