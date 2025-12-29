@@ -1,6 +1,29 @@
+
 # 📋 Servicio Social - Fundación León XIII
 
-Este módulo automatiza el aviso de término de servicio social y la gestión de eventos en el calendario institucional. Incluye una plantilla visual para el correo y un script para el procesamiento de registros desde Google Sheets.
+Este módulo automatiza el aviso de término de servicio social y la gestión de eventos en el calendario institucional. Incluye:
+
+- Un script que agrega automáticamente eventos al calendario institucional solo si no existen para ese registro y fecha.
+- Un correo de aviso de término que utiliza una plantilla HTML moderna con colores institucionales y logotipo.
+- Formato de fecha en español y mensaje personalizado para cada usuario.
+- El mensaje de correo y el evento de calendario incluyen información adicional: nombre, universidad, licenciatura, tipo de programa y fechas relevantes.
+- Variables dinámicas en la plantilla: `nombre`, `universidad`, `fechaFormateada`, `diffDays`.
+- Mejoras en la validación de fechas y control de duplicados en eventos.
+
+---
+
+## Estructura requerida de los archivos para extraer enlaces
+
+Para que el script pueda extraer correctamente los enlaces y datos de los registros, la hoja de cálculo debe tener la siguiente estructura (columnas mínimas recomendadas):
+
+- **Nombre** (columna A)
+- **Universidad** (columna E)
+- **Licenciatura/Carrera** (columna G)
+- **Tipo de programa** (columna H)
+- **Fecha de inicio** (columna L)
+- **Fecha de término** (columna M)
+
+Asegúrate de que las fechas estén en formato de fecha y no como texto. Si agregas nuevas columnas, actualiza los índices en el script para que correspondan a la nueva estructura.
 
 ---
 

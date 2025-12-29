@@ -21,12 +21,12 @@ function avisoTerminoServicioSocial() {
 
 	// Procesar todos los registros (excepto encabezado)
 	for (var i = 1; i < data.length; i++) {
-		var nombre = data[i][0]; // Columna A
-		var universidad = data[i][4]; // Columna E
-		var tipoPrograma = data[i][7]; // Columna H
-		var licenciatura = data[i][6]; // Columna G
-		var fechaTermino = data[i][11]; // Columna L
-		var fechaInicio = data[i][10]; // Columna K
+		var nombre = data[i][0]; // Nombre
+		var universidad = data[i][4]; // Universidad
+		var tipoPrograma = data[i][7]; // Tipo de programa
+		var licenciatura = data[i][6]; // Carrera o licenciatura
+		var fechaInicio = data[i][11]; // Fecha de Inicio
+		var fechaTermino = data[i][12]; // Fecha de termino
 		if (!fechaTermino || Object.prototype.toString.call(fechaTermino) !== '[object Date]') continue;
 
 		// Normaliza la fecha (sin horas)
