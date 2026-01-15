@@ -2,8 +2,6 @@ function avisoTerminoServicioSocial() {
 	var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
 	var data = sheet.getDataRange().getValues();
 	var today = new Date();
-	var email = "colaboradores@fundacionleontrece.org"; // Correo al que va dirigido
-	var calendarId = "colaboradores@fundacionleontrece.org"; // Correo como ID de calendario principal
 
 	// Función auxiliar para formatear la fecha en español
 	function formatDateEs(date, timeZone) {
@@ -22,11 +20,13 @@ function avisoTerminoServicioSocial() {
 	// Procesar todos los registros (excepto encabezado)
 	for (var i = 1; i < data.length; i++) {
 		var nombre = data[i][0]; // Nombre
-		var universidad = data[i][4]; // Universidad
+		var universidad = data[i][1]; // Universidad
 		var tipoPrograma = data[i][7]; // Tipo de programa
 		var licenciatura = data[i][6]; // Carrera o licenciatura
-		var fechaInicio = data[i][11]; // Fecha de Inicio
-		var fechaTermino = data[i][12]; // Fecha de termino
+		var correoResponsable1 = data[i][10]; // Correo responsable interno 1
+		var correoResponsable2 = data[i][11]; // Correo responsable interno 2
+		var fechaInicio = data[i][13]; // Fecha de Inicio
+		var fechaTermino = data[i][14]; // Fecha de termino
 		if (!fechaTermino || Object.prototype.toString.call(fechaTermino) !== '[object Date]') continue;
 
 		// Normaliza la fecha (sin horas)
@@ -49,34 +49,52 @@ function avisoTerminoServicioSocial() {
 			template.diffDays = diffDays;
 			var mensaje = template.evaluate().getContent();
 
-			MailApp.sendEmail({
-				to: email,
-				subject: asunto,
-				htmlBody: mensaje
-			});
-		}
-		// Crear evento en el calendario el día que termina el programa
-		var tituloEvento = "Término de " + tipoPrograma + ": " + nombre;
-		var eventos = CalendarApp.getCalendarById(calendarId).getEventsForDay(fechaTermino);
-		var existeEvento = eventos.some(function(evento) {
-			return evento.getTitle() === tituloEvento;
-		});
-		if (!existeEvento) {
-			var fechaInicioFormateada = "";
-			if (fechaInicio && Object.prototype.toString.call(fechaInicio) === '[object Date]') {
-				fechaInicioFormateada = formatDateEs(fechaInicio, Session.getScriptTimeZone());
+			// Enviar correos a colaboradores y los responsables internos
+			var destinatarios = ["colaboradores@fundacionleontrece.org"];
+			if (correoResponsable1) destinatarios.push(correoResponsable1);
+			if (correoResponsable2) destinatarios.push(correoResponsable2);
+			
+			if (destinatarios.length > 0) {
+				MailApp.sendEmail({
+					to: destinatarios.join(','),
+					subject: asunto,
+					htmlBody: mensaje
+				});
 			}
-			CalendarApp.getCalendarById(calendarId).createAllDayEvent(
-				tituloEvento,
-				fechaTermino,
-				{
-					description:
-						"Nombre - " + nombre + "\n" +
-						"Universidad - " + universidad + "\n" +
-						"Licenciatura - " + licenciatura + "\n" +
-						"Fecha de inicio - " + (fechaInicioFormateada ? fechaInicioFormateada : "")
+		}
+		
+		// Crear evento en los calendarios de colaboradores y los responsables internos
+		var tituloEvento = "Término de " + tipoPrograma + ": " + nombre;
+		var calendarios = ["colaboradores@fundacionleontrece.org"];
+		if (correoResponsable1) calendarios.push(correoResponsable1);
+		if (correoResponsable2) calendarios.push(correoResponsable2);
+		
+		var fechaInicioFormateada = "";
+		if (fechaInicio && Object.prototype.toString.call(fechaInicio) === '[object Date]') {
+			fechaInicioFormateada = formatDateEs(fechaInicio, Session.getScriptTimeZone());
+		}
+		
+		for (var j = 0; j < calendarios.length; j++) {
+			var calendar = CalendarApp.getCalendarById(calendarios[j]);
+			if (calendar) {
+				var eventos = calendar.getEventsForDay(fechaTermino);
+				var existeEvento = eventos.some(function(evento) {
+					return evento.getTitle() === tituloEvento;
+				});
+				if (!existeEvento) {
+					calendar.createAllDayEvent(
+						tituloEvento,
+						fechaTermino,
+						{
+							description:
+								"Nombre - " + nombre + "\n" +
+								"Universidad - " + universidad + "\n" +
+								"Licenciatura - " + licenciatura + "\n" +
+								"Fecha de inicio - " + (fechaInicioFormateada ? fechaInicioFormateada : "")
+						}
+					);
 				}
-			);
+			}
 		}
 	}
 }

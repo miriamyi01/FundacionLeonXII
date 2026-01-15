@@ -5,11 +5,11 @@ function actualizaciónBase() {
   if (ss.getActiveSheet().getName() !== "Base Vacaciones") return;
 
   var lastCol = sheet.getLastColumn();
-  var anioSiguiente = new Date().getFullYear() + 1;
+  var anioActual = new Date().getFullYear();
   var encabezados = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var encabezadoBuscado = 'Años de antigüedad a ' + anioSiguiente;
+  var encabezadoBuscado = 'Años de antigüedad a ' + anioActual;
   if (encabezados.includes(encabezadoBuscado)) {
-    Logger.log("Ya existen datos y fórmulas para el " + anioSiguiente + ".");
+    Logger.log("Ya existen datos y fórmulas para el " + anioActual + ".");
     return;
   }
 
@@ -28,9 +28,9 @@ function actualizaciónBase() {
 
   // Encabezados y formato
   var nuevosEncabezados = [
-    'Años de antigüedad a ' + anioSiguiente,
-    'Vacaciones a partir de aniversario ' + anioSiguiente,
-    'Fecha aniversario ' + anioSiguiente
+    'Años de antigüedad a ' + anioActual,
+    'Vacaciones a partir de aniversario ' + anioActual,
+    'Fecha aniversario ' + anioActual
   ];
   sheet.getRange(1, lastCol + 1, 1, 3)
     .setValues([nuevosEncabezados])
@@ -47,13 +47,13 @@ function actualizaciónBase() {
     for (var i = 2; i <= lastRow; i++) {
       var celdaAntiguedad = sheet.getRange(i, lastCol + 1).getA1Notation();
       formulas.push([
-        `=IF(AND(ISNUMBER($J${i}), ${anioSiguiente}-YEAR($J${i})>0), ${anioSiguiente}-YEAR($J${i}), "")`,
+        `=IF(AND(ISNUMBER($J${i}), ${anioActual}-YEAR($J${i})>0), ${anioActual}-YEAR($J${i}), "")`,
         `=IFERROR(LOOKUP(${celdaAntiguedad}, {1,2,3,4,10,15,20,25}, {8,10,12,14,16,18,20,22}), "")`,
-        `=IF(ISNUMBER($J${i}), DATE(${anioSiguiente}, MONTH($J${i}), DAY($J${i})), "")`
+        `=IF(ISNUMBER($J${i}), DATE(${anioActual}, MONTH($J${i}), DAY($J${i})), "")`
       ]);
     }
     sheet.getRange(2, lastCol + 1, lastRow - 1, 3).setFormulas(formulas);
     sheet.getRange(2, lastCol + 1, lastRow - 1, 2).setNumberFormat('0');
   }
-  Logger.log("Fórmulas y formato aplicados correctamente en las nuevas columnas para el " + anioSiguiente + ".");
+  Logger.log("Fórmulas y formato aplicados correctamente en las nuevas columnas para el " + anioActual + ".");
 }

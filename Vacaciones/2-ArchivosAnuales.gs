@@ -3,9 +3,10 @@ function archivosVacaciones() {
   const baseSheet = ss.getSheetByName('Base Vacaciones');
   const vacacionesSheet = ss.getSheetByName('Vacaciones');
   const reposicionSheet = ss.getSheetByName('Reposición de días');
+  const permisosSheet = ss.getSheetByName('Permisos');
   const indiceFileName = '001 - Índice: Archivo de vacaciones';
   const drive = DriveApp;
-  const yearObjetivo = new Date().getFullYear() + 1;
+  const yearObjetivo = new Date().getFullYear();
   const folderName = yearObjetivo.toString();
 
   // Declarar zonaHoraria antes de cualquier uso
@@ -124,6 +125,8 @@ function archivosVacaciones() {
         copiaVacaciones.setName('Vacaciones');
         let copiaReposicion = reposicionSheet.copyTo(nuevoArchivo);
         copiaReposicion.setName('Reposición de días');
+        let copiaPermisos = permisosSheet.copyTo(nuevoArchivo);
+        copiaPermisos.setName('Permisos');
 
         // Copiar formatos condicionales
         try {
@@ -150,6 +153,7 @@ function archivosVacaciones() {
 
           copiarReglasCondicionales(vacacionesSheet, copiaVacaciones);
           copiarReglasCondicionales(reposicionSheet, copiaReposicion);
+          copiarReglasCondicionales(permisosSheet, copiaPermisos);
         } catch (e) {
           Logger.log('Error copiando formatos condicionales: ' + e);
         }
@@ -163,7 +167,7 @@ function archivosVacaciones() {
         if (hojas.length > 1) {
           hojas.forEach(function(hoja) {
             const nombre = hoja.getName();
-            if (nombre !== 'Vacaciones' && nombre !== 'Reposición de días') {
+            if (nombre !== 'Vacaciones' && nombre !== 'Reposición de días' && nombre !== 'Permisos') {
               nuevoArchivo.deleteSheet(hoja);
             }
           });
@@ -183,10 +187,29 @@ function archivosVacaciones() {
         // Poner nombre del líder en G11
         vacSheet.getRange('G11').setValue(lider);
 
+        // Eliminar filas donde columna D (col 4) es negativa
+        const lastRowVac = vacSheet.getLastRow();
+        let rowsToDelete = [];
+        for (let i = 1; i <= lastRowVac; i++) {
+          let val = vacSheet.getRange(i, 4).getValue();
+          if (typeof val === 'number' && val < 0) {
+            rowsToDelete.push(i);
+          }
+        }
+        // Eliminar de abajo hacia arriba para no desfasar índices
+        for (let j = rowsToDelete.length - 1; j >= 0; j--) {
+          vacSheet.deleteRow(rowsToDelete[j]);
+        }
+
         // Llenar datos en hoja Reposición
         const repSheet = nuevoArchivo.getSheetByName('Reposición de días');
         repSheet.getRange('C1').setDataValidation(null);
         repSheet.getRange('C1').setValue(empleado); // Nombre en C1
+
+        // Llenar datos en hoja Permisos
+        const permSheet = nuevoArchivo.getSheetByName('Permisos');
+        permSheet.getRange('C1').setDataValidation(null);
+        permSheet.getRange('C1').setValue(empleado); // Nombre en C1
 
         archivosSocios.push({
           codigoZona: codigoZona,
@@ -224,6 +247,11 @@ function archivosVacaciones() {
           repSheet.getRange('C1').setDataValidation(null);
           repSheet.getRange('C1').setValue(empleado); // Nombre en C1
         }
+        const permSheet = nuevoArchivo.getSheetByName('Permisos');
+        if (permSheet && permSheet.getRange('C1').getValue() == "") {
+          permSheet.getRange('C1').setDataValidation(null);
+          permSheet.getRange('C1').setValue(empleado); // Nombre en C1
+        }
 
         archivosSocios.push({
           codigoZona: codigoZona,
@@ -239,115 +267,6 @@ function archivosVacaciones() {
           url: nuevoArchivo.getUrl()
         });
       }
-
-      // SIEMPRE ejecutar permisos y logs, tanto si es nuevo como si ya existe
-      const vacSheet = nuevoArchivo.getSheetByName('Vacaciones');
-      const repSheet = nuevoArchivo.getSheetByName('Reposición de días');
-
-      // SOLO el día de aniversario comparte y asigna rangos
-      const hoy = new Date();
-      hoy.setHours(0,0,0,0);
-      const aniversario = new Date(fechaAnivDate);
-      aniversario.setHours(0,0,0,0);
-
-      if (hoy.getTime() === aniversario.getTime()) {
-        // Compartir archivo como editor para que tengan acceso
-        if (correoColaborador) {
-          nuevoArchivo.addEditor(correoColaborador);
-          Logger.log(`Se agregó acceso de editor al archivo para colaborador: ${correoColaborador}`);
-        }
-        if (correoLider) {
-          nuevoArchivo.addEditor(correoLider);
-          Logger.log(`Se agregó acceso de editor al archivo para líder: ${correoLider}`);
-        }
-        
-        // Copiar rangos protegidos y editores de la hoja original de Vacaciones
-        {
-          const proteccionesOriginales = vacacionesSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-          Logger.log(`VACACIONES: Protecciones originales encontradas: ${proteccionesOriginales.length}`);
-          vacSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(p => p.remove());
-          proteccionesOriginales.forEach(function(p, idx) {
-            const rango = p.getRange();
-            const descripcion = p.getDescription();
-            Logger.log(`VACACIONES: Copiando protección #${idx+1} - Rango: ${rango.getA1Notation()}, Descripción: "${descripcion}"`);
-            const nuevaProteccion = vacSheet.getRange(rango.getA1Notation()).protect();
-            nuevaProteccion.setDescription(descripcion);
-
-            if (descripcion === 'AGREGAR CORREO: CADA COLABORADOR VACACIONES') {
-              // Originales + colaborador
-              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
-              p.getEditors().forEach(function(editor) {
-                nuevaProteccion.addEditor(editor);
-              });
-              if (correoColaborador) {
-                nuevaProteccion.addEditor(correoColaborador);
-                Logger.log(`VACACIONES: Permiso otorgado: colaborador (${correoColaborador}) en rango ${rango.getA1Notation()}`);
-              }
-            } else if (descripcion === 'AGREGAR CORREO: LIDER VACACIONES') {
-              // Originales + líder
-              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
-              p.getEditors().forEach(function(editor) {
-                nuevaProteccion.addEditor(editor);
-              });
-              if (correoLider) {
-                nuevaProteccion.addEditor(correoLider);
-                Logger.log(`VACACIONES: Permiso otorgado: líder (${correoLider}) en rango ${rango.getA1Notation()}`);
-              }
-            } else {
-              // Solo copia los editores originales para los demás rangos
-              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
-              p.getEditors().forEach(function(editor) {
-                nuevaProteccion.addEditor(editor);
-              });
-            }
-          });
-        }
-
-        // Copiar rangos protegidos y editores de la hoja original de Reposición
-        {
-          const proteccionesOriginales = reposicionSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-          Logger.log(`REPOSICION: Protecciones originales encontradas: ${proteccionesOriginales.length}`);
-          repSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(p => p.remove());
-          proteccionesOriginales.forEach(function(p, idx) {
-            const rango = p.getRange();
-            const descripcion = p.getDescription();
-            Logger.log(`REPOSICION: Copiando protección #${idx+1} - Rango: ${rango.getA1Notation()}, Descripción: "${descripcion}"`);
-            const nuevaProteccion = repSheet.getRange(rango.getA1Notation()).protect();
-            nuevaProteccion.setDescription(descripcion);
-
-            if (descripcion === 'AGREGAR CORREO: CADA COLABORADOR REPOSICION') {
-              // Originales + colaborador
-              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
-              p.getEditors().forEach(function(editor) {
-                nuevaProteccion.addEditor(editor);
-              });
-              if (correoColaborador) {
-                nuevaProteccion.addEditor(correoColaborador);
-                Logger.log(`REPOSICION: Permiso otorgado: colaborador (${correoColaborador}) en rango ${rango.getA1Notation()}`);
-              }
-            } else if (descripcion === 'AGREGAR CORREO: LIDER REPOSICION') {
-              // Originales + líder
-              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
-              p.getEditors().forEach(function(editor) {
-                nuevaProteccion.addEditor(editor);
-              });
-              if (correoLider) {
-                nuevaProteccion.addEditor(correoLider);
-                Logger.log(`REPOSICION: Permiso otorgado: líder (${correoLider}) en rango ${rango.getA1Notation()}`);
-              }
-            } else {
-              // Solo copia los editores originales para los demás rangos
-              nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
-              p.getEditors().forEach(function(editor) {
-                nuevaProteccion.addEditor(editor);
-              });
-            }
-          });
-        }
-      } else {
-        Logger.log('No se otorgaron permisos ni rangos porque hoy no es el día de aniversario');
-      }
-
     } catch (e) {
       Logger.log('Error creando archivo socio idx ' + s + ': ' + e);
     }

@@ -240,10 +240,3 @@ Si necesitas modificar los permisos de los rangos protegidos (por ejemplo, cambi
   El script capitaliza automáticamente el nombre completo en las tarjetas de ahorro.
 - **Búsqueda flexible de avales:**  
   El sistema de búsqueda inversa de avales tolera variaciones en los nombres, buscando coincidencias con al menos 2 palabras significativas para mayor precisión.
-
----
-
-
-## 4. Contacto
-
-Para dudas o mejoras, contacta a miriam08.mr@gmail.com
