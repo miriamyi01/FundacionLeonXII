@@ -1,4 +1,3 @@
-
 # 📂 Instrucciones para automatización de carpetas y archivos de socios
 
 Este proyecto automatiza la creación y llenado de carpetas y archivos para socios usando Google Apps Script y Google Drive.
@@ -69,6 +68,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    - Solo procesa filas de socios (omite las últimas 3 filas de la hoja).
    - Solo llena hasta la última columna donde aparece "QUINTA" en las semanas de cada mes.
    - **Optimización:** Usa la carpeta principal directamente sin buscar subcarpetas, mejorando el rendimiento.
+   - El script soporta meses con año en el encabezado (por ejemplo, `Marzo 2025`, `Marzo 2026`). Detecta automáticamente el año y el mes para cada bloque.
+   - Las fechas generadas en las fórmulas de semana siempre usan el último día válido del mes (por ejemplo, nunca pondrá el 31 de septiembre), evitando errores en las consultas de Google Sheets.
 
 
 ### 💸 Paso 4: Llenar el informe de préstamos semanales (`4-InformePrestamoSemanal.gs`)
@@ -111,6 +112,7 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    - **Automático:** Se ejecuta sin intervención manual cada día.
    - **Eficiente:** Usa rangos específicos (B13:B23, D13:D23, etc.) para mejor rendimiento.
 
+> **Nota:** Este script (`4-InformePrestamoSemanal.gs`) está diseñado para ejecutarse diariamente mediante un trigger automático. Es necesario configurar el trigger para que la función se ejecute cada día y así mantener actualizado el reporte de préstamos. Si no tienes el trigger activado, deberás ejecutarlo manualmente.
 
 ### 🤝 Paso 5: Procesar avales (`4.1-Avales.gs`)
 
@@ -152,13 +154,7 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
      - Avales procesados de prestatario a aval (búsqueda inversa)
    - Informa sobre duplicados detectados y omitidos.
 
-
-### 📊 Paso 6: Generar condensado final (`5-CondensadoFinal.gs`)
-
-1. **Abre el editor de Apps Script y pega el código de `5-CondensadoFinal.gs`.**
-2. **Ejecuta la función correspondiente para generar el reporte final.**
-   - Este paso consolida toda la información procesada en los pasos anteriores.
-   - Genera reportes finales con los datos de ahorros, préstamos y avales.
+> **Nota:** Este script (`4.1-Avales.gs`) también debe ejecutarse diariamente mediante un trigger para que cualquier cambio en los avales o préstamos se refleje automáticamente en los reportes y hojas correspondientes.
 
 ---
 
@@ -240,3 +236,17 @@ Si necesitas modificar los permisos de los rangos protegidos (por ejemplo, cambi
   El script capitaliza automáticamente el nombre completo en las tarjetas de ahorro.
 - **Búsqueda flexible de avales:**  
   El sistema de búsqueda inversa de avales tolera variaciones en los nombres, buscando coincidencias con al menos 2 palabras significativas para mayor precisión.
+
+### 📅 ¿Cómo configurar un trigger automático en Apps Script?
+
+Para que los scripts de préstamos y avales se ejecuten solos cada día:
+
+1. Abre el editor de Apps Script del archivo correspondiente.
+2. Ve al menú lateral izquierdo y selecciona **"Activadores"** (ícono de reloj).
+3. Haz clic en **"+ Agregar activador"**.
+4. Elige la función que quieres automatizar (`llenarCondensadoPrestamos` o `procesarAvales`).
+5. En "¿Con qué frecuencia?" selecciona **"Basado en tiempo"** y luego **"Diariamente"**.
+6. Elige la hora que prefieras para la ejecución automática.
+7. Guarda y acepta los permisos si es la primera vez.
+
+Así, los reportes de préstamos y avales se mantendrán siempre actualizados sin intervención manual.

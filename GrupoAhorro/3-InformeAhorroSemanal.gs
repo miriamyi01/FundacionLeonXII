@@ -153,10 +153,18 @@ function llenarCondensadoAhorros() {
 // Devuelve fecha YYYY-MM-DD para el mes y día dados (mes en texto)
 function getFechaSemanaMes(mesTexto, dia) {
   var meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-  var idx = meses.indexOf(mesTexto.toString().toUpperCase());
+  // Extraer mes y año del texto
+  var partes = mesTexto.toString().trim().split(' ');
+  var mesNombre = partes[0].toUpperCase();
+  var anio = (partes.length > 1 && /^\d{4}$/.test(partes[1])) ? parseInt(partes[1]) : new Date().getFullYear();
+  var idx = meses.indexOf(mesNombre);
   var mesNum = idx !== -1 ? idx + 1 : 1;
-  var anio = new Date().getFullYear();
+
+  // Calcular el último día del mes
+  var ultimoDia = new Date(anio, mesNum, 0).getDate();
+  var diaValido = Math.min(dia, ultimoDia);
+
   mesNum = ('0' + mesNum).slice(-2);
-  dia = ('0' + dia).slice(-2);
-  return anio + '-' + mesNum + '-' + dia;
+  diaValido = ('0' + diaValido).slice(-2);
+  return anio + '-' + mesNum + '-' + diaValido;
 }

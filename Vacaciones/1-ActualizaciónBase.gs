@@ -47,9 +47,9 @@ function actualizaciónBase() {
     for (var i = 2; i <= lastRow; i++) {
       var celdaAntiguedad = sheet.getRange(i, lastCol + 1).getA1Notation();
       formulas.push([
-        `=IF(AND(ISNUMBER($J${i}), ${anioActual}-YEAR($J${i})>0), ${anioActual}-YEAR($J${i}), "")`,
-        `=IFERROR(LOOKUP(${celdaAntiguedad}, {1,2,3,4,10,15,20,25}, {8,10,12,14,16,18,20,22}), "")`,
-        `=IF(ISNUMBER($J${i}), DATE(${anioActual}, MONTH($J${i}), DAY($J${i})), "")`
+        `=IF(AND(ISNUMBER($F${i}), ${anioActual}-YEAR($F${i})>0), ${anioActual}-YEAR($F${i}), "")`,
+        `=IFERROR(LOOKUP(${celdaAntiguedad}, {1,2,3,4,5,6,11,16,21,26}, {12,14,16,18,20,22,24,26,28,30}), "")`,
+        `=IF(ISNUMBER($F${i}), DATE(${anioActual}, MONTH($F${i}), DAY($F${i})), "")`
       ]);
     }
     sheet.getRange(2, lastCol + 1, lastRow - 1, 3).setFormulas(formulas);
