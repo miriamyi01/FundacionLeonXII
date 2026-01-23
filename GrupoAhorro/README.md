@@ -26,6 +26,12 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
     - B: Nombre
     - C: Primer apellido
     - D: Segundo apellido
+  - **Meses y años:**  
+    Para que los reportes funcionen correctamente, los encabezados de los meses en las hojas deben tener el formato `Mes Año` (por ejemplo, `Marzo 2025`, `Abril 2026`).  
+    > ⚠️ **No pongas solo el nombre del mes** (ejemplo: `Marzo`). Siempre debe incluir el año, ya que los scripts buscan y procesan por mes y año.
+
+- **Precisión de datos:**  
+  Todas las hojas y reportes usan **dos decimales** para mayor precisión en los cálculos y presentación de montos.
 
 ---
 
@@ -68,7 +74,8 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
    - Solo procesa filas de socios (omite las últimas 3 filas de la hoja).
    - Solo llena hasta la última columna donde aparece "QUINTA" en las semanas de cada mes.
    - **Optimización:** Usa la carpeta principal directamente sin buscar subcarpetas, mejorando el rendimiento.
-   - El script soporta meses con año en el encabezado (por ejemplo, `Marzo 2025`, `Marzo 2026`). Detecta automáticamente el año y el mes para cada bloque.
+   - **Formato de mes y año:**  
+     Los encabezados de los meses deben tener el formato `Mes Año` (por ejemplo, `Marzo 2025`, `Abril 2026`). El script detecta automáticamente el año y el mes para cada bloque y solo así funcionará correctamente.
    - Las fechas generadas en las fórmulas de semana siempre usan el último día válido del mes (por ejemplo, nunca pondrá el 31 de septiembre), evitando errores en las consultas de Google Sheets.
 
 
@@ -77,12 +84,16 @@ Este proyecto automatiza la creación y llenado de carpetas y archivos para soci
 1. **Abre el editor de Apps Script y pega el código de `4-InformePrestamoSemanal.gs`.**
 2. **Ejecuta la función `llenarCondensadoPrestamos`.**
    - El script busca todas las hojas de préstamos (`Tarjeta Prestamo #1`, `Tarjeta Prestamo #2`, etc.) en cada archivo de socio.
+   - **Renombrado automático:** Si alguna hoja no sigue el formato `'Tarjeta Prestamo #n'` y no es `'Tarjeta Ahorro'` ni `'Ahorros - No Activa'`, el script la renombra automáticamente como `'Tarjeta Prestamo #n'` usando el siguiente número disponible.  
+   - **Esto es necesario para mantener la secuencia de préstamos tanto en el condensado como en las hojas individuales de cada socio.**
    - **Sistema de detección de duplicados mejorado:** Identifica préstamos únicos usando la combinación `código_socio#número_préstamo` y mantiene un registro interno de préstamos existentes.
    - Solo procesa préstamos nuevos que no están ya registrados en la hoja `Prestamos`.
    - Llena los datos básicos del préstamo (número, código, nombre, fecha, cantidad, pago pendiente, destino, interés, tipo de pago).
    - Calcula automáticamente los pagos mensuales (intereses y abonos) para cada mes del año.
    - Calcula la semana del mes del último abono realizado para cada mes.
    - **Optimización:** Busca carpetas de socios directamente en la carpeta principal.
+   - **Formato de mes y año:**  
+     Los reportes de préstamos también requieren que los encabezados de los meses estén en formato `Mes Año` (por ejemplo, `Marzo 2025`). El script busca y procesa por mes y año, no solo por nombre de mes.
 
 3. **Configuración del Trigger Automático (MUY IMPORTANTE):**
    
@@ -236,6 +247,8 @@ Si necesitas modificar los permisos de los rangos protegidos (por ejemplo, cambi
   El script capitaliza automáticamente el nombre completo en las tarjetas de ahorro.
 - **Búsqueda flexible de avales:**  
   El sistema de búsqueda inversa de avales tolera variaciones en los nombres, buscando coincidencias con al menos 2 palabras significativas para mayor precisión.
+- **Precisión decimal:**  
+  Todos los reportes y hojas usan **dos decimales** para mostrar montos y cálculos con mayor exactitud.
 
 ### 📅 ¿Cómo configurar un trigger automático en Apps Script?
 

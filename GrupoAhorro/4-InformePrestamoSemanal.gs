@@ -120,19 +120,52 @@ function llenarCondensadoPrestamos() {
     
     // Buscar hojas de préstamos (Tarjeta Prestamo #1, #2, etc.)
     var hojas = tarjeta.getSheets();
+    // Primero, identificar el mayor número de préstamo existente
+    var maxNumPrestamo = 0;
+    for (var h = 0; h < hojas.length; h++) {
+      var nombreHoja = hojas[h].getName();
+      var match = nombreHoja.match(/Tarjeta Prestamo #(\d+)/);
+      if (match) {
+        var num = parseInt(match[1], 10);
+        if (num > maxNumPrestamo) maxNumPrestamo = num;
+      }
+    }
+
+    // Renombrar hojas que no cumplen el formato y no son "Tarjeta Ahorro" ni "Ahorros - No Activa"
     for (var h = 0; h < hojas.length; h++) {
       var hoja = hojas[h];
       var nombreHoja = hoja.getName();
-      
+      if (
+        nombreHoja !== 'Tarjeta Ahorro' &&
+        nombreHoja !== 'Ahorros - No Activa' &&
+        !/^Tarjeta Prestamo #\d+$/.test(nombreHoja)
+      ) {
+        maxNumPrestamo++;
+        var nuevoNombre = 'Tarjeta Prestamo #' + maxNumPrestamo;
+        hoja.setName(nuevoNombre);
+        Logger.log('Hoja renombrada a: ' + nuevoNombre + ' para socio: ' + socioId);
+      }
+    }
+
+    // Volver a obtener las hojas (por si se renombró alguna)
+    hojas = tarjeta.getSheets();
+    for (var h = 0; h < hojas.length; h++) {
+      var hoja = hojas[h];
+      var nombreHoja = hoja.getName();
       if (nombreHoja.indexOf('Tarjeta Prestamo #') !== -1) {
+        // Extraer número de préstamo del nombre de la hoja
+        var numeroPrestamo = nombreHoja.match(/#(\d+)/);
+        numeroPrestamo = numeroPrestamo ? numeroPrestamo[1] : '';
+
+        // Solo poner el número en C2 si está vacía
+        if (numeroPrestamo && hoja.getRange('C2').isBlank()) {
+          hoja.getRange('C2').setValue(numeroPrestamo);
+        }
+
         // Verificar si hay cantidad en E12
         var cantidad = hoja.getRange('E12').getValue();
         if (!cantidad || cantidad === 0) continue;
 
-        // Extraer número de préstamo del nombre de la hoja
-        var numeroPrestamo = nombreHoja.match(/#(\d+)/);
-        numeroPrestamo = numeroPrestamo ? numeroPrestamo[1] : '';
-        
         // Obtener código del socio para verificar si ya existe
         var codigoSocio = '';
         try {
@@ -161,46 +194,53 @@ function llenarCondensadoPrestamos() {
         sheetPrestamos.getRange(9, columnaPrestamo).setFormula('=IFERROR(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!E12"),"")'); // Cantidad (de Tarjeta Prestamo)
         sheetPrestamos.getRange(10, columnaPrestamo).setFormula('=IFERROR(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H24"),"")'); // Paga (de Tarjeta Prestamo)
         
-        // Pen - última celda de columna H con valor (saldo pendiente) desde H13
-        var formulaPen = '=IFERROR(INDEX(FILTER(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H13:H23"),IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H13:H23")<>"",IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H13:H23")<>0),COUNTA(FILTER(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H13:H23"),IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H13:H23")<>"",IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H13:H23")<>0))),0)';
+        // Pen - última celda de columna H con valor (saldo pendiente) desde H12
+        var formulaPen = '=IFERROR(INDEX(FILTER(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H12:H23"),IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H12:H23")<>"",IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H12:H23")<>0),COUNTA(FILTER(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H12:H23"),IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H12:H23")<>"",IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!H12:H23")<>0))),0)';
         sheetPrestamos.getRange(11, columnaPrestamo).setFormula(formulaPen); // Pen (de Tarjeta Prestamo)
         
         sheetPrestamos.getRange(12, columnaPrestamo).setFormula('=IFERROR(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!C6"),"")'); // Destino (de Tarjeta Prestamo)
         sheetPrestamos.getRange(13, columnaPrestamo).setFormula('=IFERROR(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!F5"),"")'); // Int. (de Tarjeta Prestamo)
         sheetPrestamos.getRange(14, columnaPrestamo).setFormula('=IFERROR(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!C5"),"")'); // Pago (de Tarjeta Prestamo)
 
-        // Llenar pagos mensuales según estructura específica
-        // Los pagos empiezan después de los datos básicos del préstamo
-        // Los meses están en A16:A17 con "sem" y "mon" en columna B
-        // NO TOCAR LA FILA 15 - mantener contenido existente
-        var meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
-        
-        // Empezar los pagos mensuales en la fila 16 (donde están los meses)
-        // Cada mes ocupa 2 filas: 16-17 para ENERO, 18-19 para FEBRERO, etc.
+        // Procesar todos los meses presentes en la hoja, no solo los primeros 12
         var filaInicioMeses = 16;
-        for (var m = 0; m < meses.length; m++) {
-          // Usar las dos columnas del préstamo actual para cada mes
-          var colPrimera = columnaPrestamo; // Primera columna del préstamo
-          var colSegunda = columnaPrestamo + 1; // Segunda columna del préstamo
-          var mesTexto = meses[m];
-          var anio = new Date().getFullYear();
-          var numeroMes = m + 1;
-          
-          // Calcular la fila específica para este mes (saltando fila 15)
-          var filaDelMes = filaInicioMeses + (m * 2); // 16, 18, 20, 22, etc.
-          
-          // Fila "sem": Primera columna vacía, Segunda columna = número de semana del mes del último abono del mes
-          // Buscar la fecha más reciente del mes que tenga abono y calcular su semana
+        var filaActual = filaInicioMeses;
+        while (true) {
+          var textoMesAnio = sheetPrestamos.getRange(filaActual, 1).getValue();
+          if (!textoMesAnio) break; // Terminar si la celda está vacía
+
+          // Extraer mes y año
+          var matchMes = textoMesAnio.match(/([A-Za-zÁÉÍÓÚÑáéíóúñ]+)\s+(\d{4})/);
+          if (!matchMes) break; // Terminar si no hay formato válido
+          var mesTexto = matchMes[1].toUpperCase();
+          var anio = matchMes[2];
+
+          // Convertir nombre de mes a número de mes
+          var mesesMap = {
+            'ENERO': 1, 'FEBRERO': 2, 'MARZO': 3, 'ABRIL': 4, 'MAYO': 5, 'JUNIO': 6,
+            'JULIO': 7, 'AGOSTO': 8, 'SEPTIEMBRE': 9, 'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12
+          };
+          var numeroMes = mesesMap[mesTexto] || '';
+
+          // Si no se reconoce el mes, terminar
+          if (!numeroMes) break;
+
+          var colPrimera = columnaPrestamo;
+          var colSegunda = columnaPrestamo + 1;
+
+          // Fila "sem": Segunda columna = número de semana del mes del último abono del mes
           var formulaSemanaDelMes = '=IFERROR(IF(SUMPRODUCT((MONTH(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"))=' + numeroMes + ')*(YEAR(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"))=' + anio + ')*(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!D13:D23")>0))>0,INT((DAY(INDEX(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"),MATCH(MAX(IF((MONTH(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"))=' + numeroMes + ')*(YEAR(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"))=' + anio + ')*(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!D13:D23")>0),IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"))),IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"),0)))-1)/7)+1,0),0)';
-          // Primera columna de "sem" se deja vacía (no se escribe nada)
-          sheetPrestamos.getRange(filaDelMes, colSegunda).setFormula(formulaSemanaDelMes); // Número de semana del mes (fila "sem", segunda columna)
-          
+          sheetPrestamos.getRange(filaActual, colSegunda).setFormula(formulaSemanaDelMes);
+
           // Fila "mon": Primera columna = intereses del mes, Segunda columna = abonos del mes
           var formulaInt = '=IFERROR(SUMPRODUCT((MONTH(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"))=' + numeroMes + ')*(YEAR(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"))=' + anio + ')*(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!F13:F23"))),0)';
-          sheetPrestamos.getRange(filaDelMes + 1, colPrimera).setFormula(formulaInt); // Intereses del mes (fila "mon", primera columna)
-          
+          sheetPrestamos.getRange(filaActual + 1, colPrimera).setFormula(formulaInt);
+
           var formulaCap = '=IFERROR(SUMPRODUCT((MONTH(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"))=' + numeroMes + ')*(YEAR(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!B13:B23"))=' + anio + ')*(IMPORTRANGE("' + tarjetaId + '","' + nombreHoja + '!D13:D23"))),0)';
-          sheetPrestamos.getRange(filaDelMes + 1, colSegunda).setFormula(formulaCap); // Abonos del mes (fila "mon", segunda columna)
+          sheetPrestamos.getRange(filaActual + 1, colSegunda).setFormula(formulaCap);
+
+          // Avanzar dos filas para el siguiente mes
+          filaActual += 2;
         }
 
         columnaPrestamo += 2; // Avanzar 2 columnas para el próximo préstamo (datos + datos adicionales)
