@@ -342,23 +342,23 @@ function archivosVacaciones() {
         // Si el colaborador ya está, no lo agregues
         if (idsExistentes.includes(socio.idColaborador)) return;
 
-        // Formatea la fecha de ingreso en dd/MM/yyyy para el condensado
-        let fechaIngresoCondensado = "";
-        if (socio.fechaIngreso) {
-          const idx = data.findIndex(r => r[headers.indexOf('Código')].toString().padStart(3, '0') === socio.idColaborador);
-          if (idx > 0) {
-            const fechaRaw = data[idx][headers.indexOf('Fecha de ingreso')];
-            if (fechaRaw) {
-              const fechaObj = new Date(fechaRaw);
-              fechaIngresoCondensado = Utilities.formatDate(fechaObj, zonaHoraria, "dd/MM/yyyy");
-            }
-          }
-        }
+        // Buscar el índice de la fila en la hoja maestra (Base Vacaciones)
+        const idx = data.findIndex(r => r[headers.indexOf('Código')].toString().padStart(3, '0') === socio.idColaborador);
+        if (idx < 0) return; // No encontrado
+
+        // La hoja maestra y la hoja base
+        const urlMaestra = 'https://docs.google.com/spreadsheets/d/1Aki_9InrSfW5KEjvk628AvYubNZqr8iLEww5c9B0P2c';
+        const hojaMaestra = 'Base Vacaciones';
+        // La fila en la hoja maestra
+        const filaMaestra = idx + 1;
+
+        // Columnas de la hoja maestra para importar:
+        // Fecha de ingreso (F=6), Nombre de oficina (H=8), ID colaborador (A=1), Siglas colaborador (D=4), Colaborador (B=2), Correo (E=5), Jefe directo (I=9), Correo Jefe Directo (K=11)
+        const columnasMaestra = [6, 8, 1, 4, 2, 5, 9, 11];
 
         // Busca la primera fila vacía a partir de la fila 5
         let filaDestino = 5;
         const maxRows = hojaNueva.getMaxRows();
-        // Usa lastRowAniv en vez de lastRow
         let foundEmpty = false;
         for (let i = 5; i <= hojaNueva.getLastRow(); i++) {
           const celda = hojaNueva.getRange(i, 4).getValue();
@@ -371,32 +371,48 @@ function archivosVacaciones() {
         if (!foundEmpty) {
           filaDestino = hojaNueva.getLastRow() + 1;
         }
-
-        // Asegura que hay suficientes filas (si la hoja está vacía o se requiere agregar)
         if (maxRows < filaDestino) {
           hojaNueva.insertRowsAfter(maxRows, filaDestino - maxRows);
         }
 
         // Solo escribe si la fila destino es válida (mayor o igual a 5)
         if (filaDestino >= 5) {
-          hojaNueva.getRange(filaDestino, 1, 1, 9).setValues([
-            [
-              socio.codigoZona,
-              fechaIngresoCondensado,
-              socio.nombreOficina,
-              socio.idColaborador,
-              socio.siglasColaborador,
-              socio.colaborador,
-              socio.correo,
-              socio.jefeDirecto,
-              socio.correoJefeDirecto,
-            ]
-          ]);
+          // 1. Código de Zona (calculado)
+          // Obtener oficina de la hoja maestra (columna H=8)
+          const oficinaFormula = `IMPORTRANGE("${urlMaestra}","${hojaMaestra}!${getColumnLetter(8)}${filaMaestra}")`;
+          const codigoZonaFormula = `="Z"&TEXT(VALUE(MID(${oficinaFormula},1,2)),"00")`;
+          hojaNueva.getRange(filaDestino, 1).setFormula(codigoZonaFormula);
+
+          // 2. Fecha de ingreso (col F=6)
+          hojaNueva.getRange(filaDestino, 2).setFormula(`=IMPORTRANGE("${urlMaestra}","${hojaMaestra}!${getColumnLetter(6)}${filaMaestra}")`);
+
+          // 3. Nombre de oficina (col H=8, quitando los dos dígitos iniciales y espacio)
+          hojaNueva.getRange(filaDestino, 3).setFormula(`=REGEXREPLACE(IMPORTRANGE("${urlMaestra}","${hojaMaestra}!${getColumnLetter(8)}${filaMaestra}"),"^\\d{2}\\s*","")`);
+
+          // 4. ID colaborador (col A=1, con ceros a la izquierda)
+          hojaNueva.getRange(filaDestino, 4).setFormula(`=TEXT(IMPORTRANGE("${urlMaestra}","${hojaMaestra}!${getColumnLetter(1)}${filaMaestra}"),"000")`);
+
+          // 5. Siglas colaborador (col D=4)
+          hojaNueva.getRange(filaDestino, 5).setFormula(`=IMPORTRANGE("${urlMaestra}","${hojaMaestra}!${getColumnLetter(4)}${filaMaestra}")`);
+
+          // 6. Colaborador (col B=2)
+          hojaNueva.getRange(filaDestino, 6).setFormula(`=IMPORTRANGE("${urlMaestra}","${hojaMaestra}!${getColumnLetter(2)}${filaMaestra}")`);
+
+          // 7. Correo (col E=5)
+          hojaNueva.getRange(filaDestino, 7).setFormula(`=IMPORTRANGE("${urlMaestra}","${hojaMaestra}!${getColumnLetter(5)}${filaMaestra}")`);
+
+          // 8. Jefe directo (col I=9)
+          hojaNueva.getRange(filaDestino, 8).setFormula(`=IMPORTRANGE("${urlMaestra}","${hojaMaestra}!${getColumnLetter(9)}${filaMaestra}")`);
+
+          // 9. Correo Jefe Directo (col K=11)
+          hojaNueva.getRange(filaDestino, 9).setFormula(`=IMPORTRANGE("${urlMaestra}","${hojaMaestra}!${getColumnLetter(11)}${filaMaestra}")`);
+
+          // 10. Link al archivo de vacaciones (directo)
           hojaNueva.getRange(filaDestino, 10).setValue(socio.url);
+
           hojaNueva.getRange(filaDestino, 1, 1, 10).setFontFamily('Lato');
           hojaNueva.getRange(filaDestino, 1, 1, 10).setFontSize(12);
           hojaNueva.getRange(filaDestino, 1, 1, 10).setBackground('#FFFFFF');
-          // ACTUALIZA idsExistentes para evitar sobrescribir en la siguiente iteración
           idsExistentes.push(socio.idColaborador);
         }
         nuevosAgregados++;
@@ -411,4 +427,15 @@ function archivosVacaciones() {
   } catch (e) {
     Logger.log('Error actualizando hoja índice: ' + e);
   }
+}
+
+// Helper para convertir número de columna a letra (A, B, ..., Z, AA, AB, ...)
+function getColumnLetter(col) {
+  let temp, letter = '';
+  while (col > 0) {
+    temp = (col - 1) % 26;
+    letter = String.fromCharCode(temp + 65) + letter;
+    col = (col - temp - 1) / 26;
+  }
+  return letter;
 }
