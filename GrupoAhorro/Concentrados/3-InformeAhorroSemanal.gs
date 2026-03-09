@@ -6,11 +6,20 @@ function llenarCondensadoAhorros() {
     return;
   }
 
-  // Detectar bloques de meses y sus columnas en la fila 4
-  var colStart = 12; // L = 12
+  // Detectar bloques de meses y sus columnas en la fila 1
+  // Detectar automáticamente la columna donde empieza la primera semana ("PRIMERA") en la fila 3
   var lastCol = sheetCondensado.getLastColumn();
-  var mesRow = sheetCondensado.getRange(4, colStart, 1, lastCol - colStart + 1).getValues()[0];
-  var semanaRow = sheetCondensado.getRange(6, colStart, 1, lastCol - colStart + 1).getValues()[0];
+  var semanaRowFull = sheetCondensado.getRange(3, 1, 1, lastCol).getValues()[0];
+  var mesRowFull = sheetCondensado.getRange(1, 1, 1, lastCol).getValues()[0];
+  var colStart = 1;
+  for (var c = 0; c < semanaRowFull.length; c++) {
+    if (semanaRowFull[c] && semanaRowFull[c].toString().toUpperCase().indexOf("PRIMERA") !== -1) {
+      colStart = c + 1; // columnas son 1-indexed
+      break;
+    }
+  }
+  var mesRow = mesRowFull.slice(colStart - 1);
+  var semanaRow = semanaRowFull.slice(colStart - 1);
 
   // Construir bloques de meses: [{mes, colIni, colFin, semanas}]
   var bloques = [];
@@ -45,11 +54,11 @@ function llenarCondensadoAhorros() {
     }
   }
 
-  // Obtener IDs de socios desde la columna A, desde la fila 8, omitiendo las últimas 3 filas
+  // Obtener IDs de socios desde la columna A, desde la fila 5, omitiendo las últimas 3 filas
   var lastRow = sheetCondensado.getLastRow();
-  var sociosRows = lastRow - 7 - 3; // omitir las últimas 3 filas
+  var sociosRows = lastRow - 4 - 3; // omitir las últimas 3 filas
   if (sociosRows <= 0) return;
-  var sociosData = sheetCondensado.getRange(8, 1, sociosRows, 1).getValues();
+  var sociosData = sheetCondensado.getRange(5, 1, sociosRows, 1).getValues();
 
   // Buscar carpeta principal
   var parentFolder;
@@ -116,20 +125,18 @@ function llenarCondensadoAhorros() {
     // Siempre usa la hoja llamada 'Tarjeta Ahorro'
     var hojaNombre = 'Tarjeta Ahorro';
 
-    // AHORRO INICIAL (E9) solo en columna G (7), SIN IFERROR
-    try {
-      var formulaAhorroInicialG = '=IMPORTRANGE("' + tarjetaUrl + '","' + hojaNombre + '!E9")';
-      sheetCondensado.getRange(i + 8, 7).setFormula(formulaAhorroInicialG);
-    } catch (e) {
-      Logger.log('Error poniendo fórmula de ahorro inicial en columna G para socio ' + socioId + ': ' + e);
-    }
+
+    // Interés, inscripción, ahorro inicial
+    sheetCondensado.getRange(i + 5, 6).setFormula('=IMPORTRANGE("' + tarjetaUrl + '","' + hojaNombre + '!F3")');
+    sheetCondensado.getRange(i + 5, 7).setFormula('=IFERROR(IMPORTRANGE("' + tarjetaUrl + '","' + hojaNombre + '!F1"), "")');
+    sheetCondensado.getRange(i + 5, 8).setFormula('=IFERROR(IMPORTRANGE("' + tarjetaUrl + '","' + hojaNombre + '!C9"), "")');
 
     // Para cada bloque de mes y sus semanas
     for (var b = 0; b < bloques.length; b++) {
       var bloque = bloques[b];
       var mes = bloque.mes;
       var semanas = bloque.semanas;
-      for (var semanaIdx = 0; semanaIdx < semanas.length; semanaIdx++) {
+        for (var semanaIdx = 0; semanaIdx < semanas.length; semanaIdx++) {
         try {
           var semanaNombre = semanas[semanaIdx];
           var semanaInicio = 1 + semanaIdx * 7;
@@ -139,7 +146,9 @@ function llenarCondensadoAhorros() {
             getFechaSemanaMes(mes, semanaInicio) + '\' and Col1 <= date \'' + getFechaSemanaMes(mes, semanaFin) + '\'"))' +
             '-SUM(QUERY(IMPORTRANGE("' + tarjetaUrl + '","' + hojaNombre + '!A9:D"), "select Col4 where Col1 >= date \'' +
             getFechaSemanaMes(mes, semanaInicio) + '\' and Col1 <= date \'' + getFechaSemanaMes(mes, semanaFin) + '\'"))), "")';
-          sheetCondensado.getRange(i + 8, bloque.colIni + semanaIdx).setFormula(formulaSemana);
+              // Usar la columna real de la semana dentro del bloque
+              var colSemana = bloque.colIni + semanaIdx;
+              sheetCondensado.getRange(i + 5, colSemana).setFormula(formulaSemana);
         } catch (e) {
           Logger.log('Error poniendo fórmula de semana ' + semanaNombre + ' para socio ' + socioId + ' en mes ' + mes + ': ' + e);
         }

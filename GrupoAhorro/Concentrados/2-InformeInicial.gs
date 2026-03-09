@@ -21,7 +21,7 @@ function registrarSociosCondensado() {
   if (!inscripcionSheet) return Logger.log('No se encontró la hoja Inscripción en el archivo de origen.');
 
   // Obtener todos los socios de inscripción
-  var dataInscripcion = inscripcionSheet.getRange('A8:A').getValues();
+  var dataInscripcion = inscripcionSheet.getRange('A7:A').getValues();
   var importRows = dataInscripcion.findIndex(function(r) { return !r[0] && r[0] !== 0; });
   if (importRows === -1) importRows = dataInscripcion.length;
   if (importRows === 0) return Logger.log('No hay filas para importar.');
@@ -29,11 +29,11 @@ function registrarSociosCondensado() {
   // Obtener socios que ya existen en el condensado
   var totalRows = sheetCondensado.getMaxRows();
   var last3Start = totalRows - 2;
-  var filasCondensado = last3Start - 8;
-  
+  var filasCondensado = last3Start - 5;
+
   var sociosExistentes = [];
   if (filasCondensado > 0) {
-    var dataCondensado = sheetCondensado.getRange(8, 1, filasCondensado, 1).getValues();
+    var dataCondensado = sheetCondensado.getRange(5, 1, filasCondensado, 1).getValues();
     for (var i = 0; i < dataCondensado.length; i++) {
       if (dataCondensado[i][0]) {
         sociosExistentes.push(dataCondensado[i][0].toString());
@@ -47,7 +47,7 @@ function registrarSociosCondensado() {
     var numeroSocio = dataInscripcion[i][0];
     if (numeroSocio && sociosExistentes.indexOf(numeroSocio.toString()) === -1) {
       sociosNuevos.push({
-        fila: 8 + i,
+        fila: 7 + i,
         numeroSocio: numeroSocio
       });
     }
@@ -58,7 +58,7 @@ function registrarSociosCondensado() {
   }
 
   // Calcular dónde empezar a agregar los nuevos socios
-  var filaInicioNuevos = 8 + sociosExistentes.length;
+  var filaInicioNuevos = 5 + sociosExistentes.length;
   
   // Asegurar que hay suficientes filas para los nuevos socios
   var filasNecesarias = sociosExistentes.length + sociosNuevos.length;
@@ -73,7 +73,7 @@ function registrarSociosCondensado() {
     var socioNuevo = sociosNuevos[i];
     var filaDestino = filaInicioNuevos + i;
     
-    for (var col = 1; col <= 6; col++) {
+    for (var col = 1; col <= 7; col++) {
       if (col === 5) continue; // Saltar columna E
       var colLetter = String.fromCharCode(64 + col);
       var formula = '=IMPORTRANGE("' + fileUrl + '", "Inscripción!' + colLetter + socioNuevo.fila + '")';

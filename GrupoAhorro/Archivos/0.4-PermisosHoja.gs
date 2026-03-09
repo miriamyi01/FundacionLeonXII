@@ -1,36 +1,62 @@
 function actualizarPermisosProteccion() {
-  // El archivo actual (04 TARJETA AHORRO Y PRESTAMO) es la fuente
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var parents = DriveApp.getFileById(ss.getId()).getParents();
-  var folder = null;
-  while (parents.hasNext()) {
-    folder = parents.next();
-    break;
+  // Buscar el archivo base '04 TARJETA AHORRO Y PRESTAMO' en la carpeta del script
+  var scriptFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+  var scriptFolder = scriptFile.getParents().next();
+  var filesBase = scriptFolder.getFiles();
+  var baseFileId = null;
+  while (filesBase.hasNext()) {
+    var fileBase = filesBase.next();
+    if (fileBase.getName().indexOf('04 TARJETA AHORRO Y PRESTAMO') !== -1 && fileBase.getMimeType() === MimeType.GOOGLE_SHEETS) {
+      baseFileId = fileBase.getId();
+      break;
+    }
   }
-  Logger.log("Carpeta principal: " + folder.getName());
-
-  // Buscar archivo de inscripción para obtener la lista de socios
-  var archivoInscripcion = null;
-  var files = folder.getFiles();
-  while (files.hasNext()) {
-    var file = files.next();
-    try {
-      if (
-        file.getMimeType() === MimeType.GOOGLE_SHEETS &&
-        file.getName().trim().toUpperCase() === '03 LISTA DE INSCRIPCION'
-      ) {
-        archivoInscripcion = SpreadsheetApp.openById(file.getId());
-        break;
-      }
-    } catch (e) {}
-  }
-  if (!archivoInscripcion) {
-    Logger.log("No se encontró el archivo '03 LISTA DE INSCRIPCION'");
+  if (!baseFileId) {
+    Logger.log('No se encontró el archivo base 04 TARJETA AHORRO Y PRESTAMO en la carpeta del script.');
     return;
   }
-  var sheet = archivoInscripcion.getSheetByName('Inscripción');
+  var ss = SpreadsheetApp.openById(baseFileId);
+  var rootFolderName = 'GA0452 METAMORFOSIS';
+  var sociosFolderName = 'GA0452-SOCIOS AS';
+
+  function normalizarNombre(nombre) {
+    return nombre.toString().replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  // Buscar la carpeta raíz
+  var folders = DriveApp.getFolders();
+  var rootFolder = null;
+  while (folders.hasNext()) {
+    var f = folders.next();
+    if (normalizarNombre(f.getName()) === normalizarNombre(rootFolderName)) {
+      rootFolder = f;
+      break;
+    }
+  }
+  if (!rootFolder) {
+    Logger.log('No se encontró la carpeta raíz: ' + rootFolderName);
+    return;
+  }
+
+  // Buscar la carpeta de socios dentro del folder raíz
+  var sociosMainFolder = null;
+  var subFolders = rootFolder.getFolders();
+  while (subFolders.hasNext()) {
+    var sf = subFolders.next();
+    if (normalizarNombre(sf.getName()) === normalizarNombre(sociosFolderName)) {
+      sociosMainFolder = sf;
+      break;
+    }
+  }
+  if (!sociosMainFolder) {
+    Logger.log('No se encontró la carpeta ' + sociosFolderName + ' dentro de ' + rootFolderName);
+    return;
+  }
+
+  // Usar directamente la hoja 'Inscripción' del archivo activo
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Inscripción');
   if (!sheet) {
-    Logger.log("No existe la hoja 'Inscripción'");
+    Logger.log("No existe la hoja 'Inscripción' en el archivo activo.");
     return;
   }
 
@@ -42,6 +68,7 @@ function actualizarPermisosProteccion() {
     var nombreHoja = hoja.getName();
     if (
       nombreHoja === "Tarjeta Ahorro" ||
+      nombreHoja === "Fondo de Emergencia" ||
       /^Tarjeta Prestamo\s*#?\d*$/i.test(nombreHoja)
     ) {
       var protections = hoja.getProtections(SpreadsheetApp.ProtectionType.RANGE);
@@ -59,13 +86,13 @@ function actualizarPermisosProteccion() {
     }
   }
 
-  var mainFolder = folder;
+  var mainFolder = sociosMainFolder;
   var lastRow = sheet.getLastRow();
   var sociosProcesados = 0;
   var archivosActualizados = 0;
   var proteccionesCopiadas = 0;
 
-  for (var i = 8; i <= lastRow; i++) {
+  for (var i = 7; i <= lastRow; i++) {
     var numeroSocio = sheet.getRange("A" + i).getValue().toString().trim();
     var nombreCompleto = [
       sheet.getRange("B" + i).getValue().toString().trim(),
@@ -91,17 +118,14 @@ function actualizarPermisosProteccion() {
       continue;
     }
 
-    // Buscar archivo de Google Sheets
+    // Buscar archivo por nombre: [iniciales] - TARJETA AHORRO Y PRESTAMO
+    var folderNameParts = carpetaSocio.getName().split(' ');
+    var inicialesCarpeta = folderNameParts[1] || '';
+    var archivoNombre = inicialesCarpeta + ' - TARJETA AHORRO Y PRESTAMO';
+    var archivosExistentes = carpetaSocio.getFilesByName(archivoNombre);
     var destFile = null;
-    var filesIt = carpetaSocio.getFiles();
-    while (filesIt.hasNext()) {
-      var f = filesIt.next();
-      try {
-        if (f.getMimeType && f.getMimeType() === MimeType.GOOGLE_SHEETS) {
-          destFile = f;
-          break;
-        }
-      } catch (e) {}
+    if (archivosExistentes.hasNext()) {
+      destFile = archivosExistentes.next();
     }
     if (!destFile) {
       sociosProcesados++;
@@ -119,6 +143,7 @@ function actualizarPermisosProteccion() {
 
       if (
         nombreHoja === "Tarjeta Ahorro" ||
+        nombreHoja === "Fondo de Emergencia" ||
         /^Tarjeta Prestamo\s*#?\d*$/i.test(nombreHoja)
       ) {
         var protections = hoja.getProtections(SpreadsheetApp.ProtectionType.RANGE);
@@ -165,8 +190,8 @@ function actualizarPermisosProteccion() {
               var rango = hoja.getRange(base.rangeA1);
               var nuevaProteccion = rango.protect();
               nuevaProteccion.setDescription(base.description);
-              nuevaProteccion.setWarningOnly(base.warningOnly);
-              if (!base.warningOnly && base.editors.length > 0) {
+              nuevaProteccion.setWarningOnly(false); // Quitar el warning, solo los editores pueden modificar
+              if (base.editors.length > 0) {
                 nuevaProteccion.removeEditors(nuevaProteccion.getEditors());
                 nuevaProteccion.addEditors(base.editors);
               }
