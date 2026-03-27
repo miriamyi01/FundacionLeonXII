@@ -127,6 +127,7 @@ function renombrarYAgregarHojas() {
       Logger.log('Archivo creado: ' + archivoNombre + ' en ' + carpetaSocio.getName());
     }
 
+
     // Copiar las hojas del archivo actual al archivo del socio (evitando duplicados)
     var destSS = SpreadsheetApp.openById(destFile.getId());
     var hojasAgregadas = 0;
@@ -144,11 +145,10 @@ function renombrarYAgregarHojas() {
           if (!newSh.getRange('D1').getValue()) {
             newSh.getRange('D1').setValue(numeroSocio);
           }
-          // Solo para 'Tarjeta Ahorro', también llena F1 con la fórmula
+          // Solo para 'Tarjeta Ahorro', llena F1 con el valor de la columna F de la hoja Inscripción
           if (baseNameSh === 'Tarjeta Ahorro') {
-            var ssId = baseSS.getId();
-            var formula = '=IMPORTRANGE("' + ssId + '", "Inscripción!F' + i + '")';
-            newSh.getRange('F1').setFormula(formula);
+            var valorF = sheet.getRange('F' + i).getValue();
+            newSh.getRange('F1').setValue(valorF);
           }
         }
         continue;
@@ -162,12 +162,22 @@ function renombrarYAgregarHojas() {
         if (!newSh.getRange('D1').getValue()) {
           newSh.getRange('D1').setValue(numeroSocio);
         }
-        // Solo para 'Tarjeta Ahorro', también llena F1 con la fórmula
+        // Solo para 'Tarjeta Ahorro', llena F1 con el valor de la columna F de la hoja Inscripción
         if (baseNameSh === 'Tarjeta Ahorro') {
-          var ssId2 = baseSS.getId();
-          var formula2 = '=IMPORTRANGE("' + ssId2 + '", "Inscripción!F' + i + '")';
-          newSh.getRange('F1').setFormula(formula2);
+          var valorF2 = sheet.getRange('F' + i).getValue();
+          newSh.getRange('F1').setValue(valorF2);
         }
+      }
+    }
+
+    // Actualizar nombre y código en C47 y G47 de todas las hojas 'Tarjeta Prestamo #N'
+    var hojasSocio = destSS.getSheets();
+    for (var h = 0; h < hojasSocio.length; h++) {
+      var hoja = hojasSocio[h];
+      var nombreHoja = hoja.getName();
+      if (nombreHoja.indexOf('Tarjeta Prestamo #') === 0) {
+        hoja.getRange('C47').setValue(nombreCompleto);
+        hoja.getRange('G47').setValue(numeroU);
       }
     }
 
@@ -178,7 +188,7 @@ function renombrarYAgregarHojas() {
       archivosRenombrados++;
     }
 
-    Logger.log("Actualizado: " + carpetaSocio.getName() + " | Hojas agregadas: " + hojasAgregadas + " | Nuevo nombre: " + nuevoNombreArchivo);
+    Logger.log("Actualizado: " + carpetaSocio.getName() + " | Hojas agregadas: " + hojasAgregadas + " | Nombre: " + nuevoNombreArchivo);
     sociosProcesados++;
   }
 
