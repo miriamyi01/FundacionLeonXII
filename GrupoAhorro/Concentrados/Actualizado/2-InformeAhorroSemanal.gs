@@ -261,7 +261,7 @@ function llenarCondensadoAhorros() {
   var lastCol = sheetCondensado.getLastColumn();
   var semanasExistentes = new Set();
   var columnasSemanaExistente = {};
-  var colStart = 6; // Columna F = 6
+  var colStart = 8; // Columna H = 8
   var valorF3Inicial = sheetCondensado.getRange(3, colStart).getValue();
   var primeraEjecucionGlobal = !valorF3Inicial;
   if (lastCol >= colStart) { 
@@ -303,7 +303,7 @@ function llenarCondensadoAhorros() {
       var columnaLetra = String.fromCharCode(64 + colDestino); // Convertir número de columna a letra
       sheetCondensado.getRange(2, colDestino).setFormula('=SUM(' + columnaLetra + '4:' + columnaLetra + ')');
 
-      // Copiar reglas de formato condicional de la columna F a la nueva columna
+      // Copiar reglas de formato condicional de la columna H a la nueva columna
       copiarCondicionalesColumna(sheetCondensado, colStart, colDestino);
     } else {
       Logger.log('Semana ' + fechaLunesStr + ' ya existe, rellenando faltantes.');
@@ -371,7 +371,7 @@ function llenarCondensadoAhorros() {
     colActual++;
   }
 
-  // Desde la segunda ejecución global en adelante, F siempre debe quedar con IFERROR
+  // Desde la segunda ejecución global en adelante, H siempre debe quedar con IFERROR
   if (!primeraEjecucionGlobal) {
     asegurarIfErrorEnColumna(sheetCondensado, socioStartRow, sociosRows, colStart);
   }
