@@ -181,11 +181,11 @@ function llenarCondensadoEmergencias() {
       continue;
     }
 
-    // Obtener fechas de la hoja "Fondo de Emergencia" rango A4:A
+    // Obtener fechas de la hoja "Fondo de Emergencia" rango A4:A25
     try {
       var tarjetaEmergencia = tarjeta.getSheetByName('Fondo de Emergencia');
       if (tarjetaEmergencia) {
-        var datosAhorro = tarjetaEmergencia.getRange('A4:A').getValues();
+        var datosAhorro = tarjetaEmergencia.getRange('A4:A25').getValues();
         for (var j = 0; j < datosAhorro.length; j++) {
           var fecha = datosAhorro[j][0];
           if (fecha && fecha instanceof Date) {
@@ -324,15 +324,15 @@ function llenarCondensadoEmergencias() {
       var fechaLunesFormatted = Utilities.formatDate(semana.lunesFecha, 'UTC', 'yyyy-MM-dd');
       var fechaDomingoFormatted = Utilities.formatDate(semana.domingoFecha, 'UTC', 'yyyy-MM-dd');
       
-      var formulaBase = 'SUM(QUERY(IMPORTRANGE("' + tarjetaUrl + '","\'Fondo de Emergencia\'!A4:D"), "select Col3 where Col1 >= date \'' +
+      var formulaBase = 'SUM(QUERY(IMPORTRANGE("' + tarjetaUrl + '","\'Fondo de Emergencia\'!A4:D25"), "select Col3 where Col1 >= date \'' +
         fechaLunesFormatted + '\' and Col1 <= date \'' + fechaDomingoFormatted + '\'", 0))';
 
-      var formulaSemana = '=IFERROR(' + formulaBase + ', "")';
+      var formulaSemana = '=IFERROR(' + formulaBase + ', 0)';
 
       var celdaDestino = sheetCondensado.getRange(socio.row, colDestino);
       if (semanaYaExiste) {
         if (!celdaDestino.getFormula() && celdaDestino.getValue() === '') {
-          celdaDestino.setFormula('=IFERROR(' + formulaBase + ', "")');
+          celdaDestino.setFormula('=IFERROR(' + formulaBase + ', 0)');
         }
       } else {
         celdaDestino.setFormula(formulaSemana);
@@ -340,6 +340,76 @@ function llenarCondensadoEmergencias() {
     }
 
     colActual++;
+  }
+
+  // Actualizar hoja resumen: fechas en columna A y suma de ingresos por semana en columna C.
+  var sheetResumen = ss.getSheetByName('Resumen Fondo de Emergencia');
+  if (sheetResumen) {
+    var lastColResumen = sheetCondensado.getLastColumn();
+
+    function numeroAColumna(colNum) {
+      var resultado = '';
+      while (colNum > 0) {
+        var residuo = (colNum - 1) % 26;
+        resultado = String.fromCharCode(65 + residuo) + resultado;
+        colNum = Math.floor((colNum - 1) / 26);
+      }
+      return resultado;
+    }
+
+    // Mapa de fechas ya existentes en resumen (columna A, desde fila 3)
+    var fechasExistentesResumen = {};
+    var lastRowResumen = sheetResumen.getLastRow();
+    if (lastRowResumen >= 3) {
+      var fechasResumen = sheetResumen.getRange(3, 1, lastRowResumen - 2, 1).getValues();
+      for (var fr = 0; fr < fechasResumen.length; fr++) {
+        var valorFecha = fechasResumen[fr][0];
+        var claveFecha = null;
+        if (valorFecha instanceof Date) {
+          claveFecha = Utilities.formatDate(valorFecha, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        } else if (typeof valorFecha === 'string' && valorFecha.trim() !== '') {
+          claveFecha = convertirTextoAClaveFecha(valorFecha);
+        }
+        if (claveFecha) {
+          fechasExistentesResumen[claveFecha] = 3 + fr;
+        }
+      }
+    }
+
+    var filaSiguiente = Math.max(3, sheetResumen.getLastRow() + 1);
+
+    if (lastColResumen >= colStart) {
+      var fechasHorizontales = sheetCondensado.getRange(3, colStart, 1, lastColResumen - colStart + 1).getValues()[0];
+
+      for (var c = 0; c < fechasHorizontales.length; c++) {
+        var fechaSemana = fechasHorizontales[c];
+        if (fechaSemana === '' || fechaSemana === null) continue;
+
+        var claveSemana = null;
+        if (fechaSemana instanceof Date) {
+          claveSemana = Utilities.formatDate(fechaSemana, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        } else if (typeof fechaSemana === 'string' && fechaSemana.trim() !== '') {
+          claveSemana = convertirTextoAClaveFecha(fechaSemana);
+        }
+        if (!claveSemana) continue;
+
+        var colActualResumen = colStart + c;
+        var colLetra = numeroAColumna(colActualResumen);
+
+        var filaDestinoResumen = fechasExistentesResumen[claveSemana];
+        if (!filaDestinoResumen) {
+          filaDestinoResumen = filaSiguiente;
+          filaSiguiente++;
+          fechasExistentesResumen[claveSemana] = filaDestinoResumen;
+        }
+
+        sheetResumen.getRange(filaDestinoResumen, 1).setFormula("='Fondo de Emergencia'!" + colLetra + "3");
+        sheetResumen.getRange(filaDestinoResumen, 3).setFormula("=SUM('Fondo de Emergencia'!" + colLetra + "4:" + colLetra + ")");
+        sheetResumen.getRange(filaDestinoResumen, 5).setFormula("=C" + filaDestinoResumen + "-D" + filaDestinoResumen);
+      }
+    }
+  } else {
+    Logger.log('No se encontró la hoja Resumen Fondo de Emergencia.');
   }
 
   Logger.log('Condensado de fondo de emergencia por semanas completado. Columnas procesadas: ' + (colActual - colStart));

@@ -86,16 +86,20 @@ function renombrarYAgregarHojas() {
     // Buscar la carpeta del socio por código y nombre completo, ignorando iniciales
     var apellido1 = sheet.getRange('C' + i).getValue().toString().trim();
     var apellido2 = sheet.getRange('D' + i).getValue().toString().trim();
-    var nombreCompletoSocio = (nombreB + ' ' + apellido1 + ' ' + apellido2).trim().toLowerCase();
+    var nombreCompletoSocio = normalizarNombre(nombreB + ' ' + apellido1 + ' ' + apellido2);
+    var numeroSocioNormalizado = normalizarNombre(numeroSocio);
     var carpetaSocio = null;
     var subfolders = sociosMainFolder.getFolders();
     while (subfolders.hasNext()) {
       var folder = subfolders.next();
-      var folderName = folder.getName();
-      var partes = folderName.split(' ');
-      var folderCodigo = partes[0] || '';
-      var folderNombreCompleto = partes.slice(2).join(' ').trim().toLowerCase();
-      if (folderCodigo === numeroSocio && folderNombreCompleto === nombreCompletoSocio) {
+      var folderNameNormalizado = normalizarNombre(folder.getName());
+
+      // Acepta formatos históricos: con o sin iniciales, o con iniciales de segundo nombre.
+      var coincideExactoSinIniciales = (folderNameNormalizado === (numeroSocioNormalizado + ' ' + nombreCompletoSocio));
+      var coincideConPrefijoNumero = folderNameNormalizado.indexOf(numeroSocioNormalizado + ' ') === 0;
+      var coincideNombreCompletoAlFinal = folderNameNormalizado.slice(-nombreCompletoSocio.length) === nombreCompletoSocio;
+
+      if (coincideExactoSinIniciales || (coincideConPrefijoNumero && coincideNombreCompletoAlFinal)) {
         carpetaSocio = folder;
         break;
       }

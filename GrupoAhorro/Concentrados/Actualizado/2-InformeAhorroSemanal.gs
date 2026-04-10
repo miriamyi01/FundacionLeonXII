@@ -50,7 +50,7 @@ function llenarCondensadoAhorros() {
       if (/^\s*=\s*IFERROR\s*\(/i.test(formula)) continue;
 
       var cuerpo = formula.charAt(0) === '=' ? formula.substring(1) : formula;
-      formulas[i][0] = '=IFERROR(' + cuerpo + ', "")';
+      formulas[i][0] = '=IFERROR(' + cuerpo + ', 0)';
       huboCambios = true;
     }
 
@@ -204,11 +204,11 @@ function llenarCondensadoAhorros() {
       continue;
     }
 
-    // Obtener fechas de la hoja "Tarjeta Ahorro" rango A12:A
+    // Obtener fechas de la hoja "Tarjeta Ahorro" rango A12:A54
     try {
       var tarjetaAhorro = tarjeta.getSheetByName('Tarjeta Ahorro');
       if (tarjetaAhorro) {
-        var datosAhorro = tarjetaAhorro.getRange('A12:A').getValues();
+        var datosAhorro = tarjetaAhorro.getRange('A12:A54').getValues();
         for (var j = 0; j < datosAhorro.length; j++) {
           var fecha = datosAhorro[j][0];
           if (fecha && fecha instanceof Date) {
@@ -261,7 +261,7 @@ function llenarCondensadoAhorros() {
   var lastCol = sheetCondensado.getLastColumn();
   var semanasExistentes = new Set();
   var columnasSemanaExistente = {};
-  var colStart = 8; // Columna H = 8
+  var colStart = 10; // Columna J = 10
   var valorF3Inicial = sheetCondensado.getRange(3, colStart).getValue();
   var primeraEjecucionGlobal = !valorF3Inicial;
   if (lastCol >= colStart) { 
@@ -303,7 +303,7 @@ function llenarCondensadoAhorros() {
       var columnaLetra = String.fromCharCode(64 + colDestino); // Convertir número de columna a letra
       sheetCondensado.getRange(2, colDestino).setFormula('=SUM(' + columnaLetra + '4:' + columnaLetra + ')');
 
-      // Copiar reglas de formato condicional de la columna H a la nueva columna
+      // Copiar reglas de formato condicional de la columna J a la nueva columna
       copiarCondicionalesColumna(sheetCondensado, colStart, colDestino);
     } else {
       Logger.log('Semana ' + fechaLunesStr + ' ya existe, rellenando faltantes.');
@@ -349,19 +349,19 @@ function llenarCondensadoAhorros() {
       var fechaLunesFormatted = Utilities.formatDate(semana.lunesFecha, 'UTC', 'yyyy-MM-dd');
       var fechaDomingoFormatted = Utilities.formatDate(semana.domingoFecha, 'UTC', 'yyyy-MM-dd');
       
-      var formulaBase = '(SUM(QUERY(IMPORTRANGE("' + tarjetaUrl + '","\'Tarjeta Ahorro\'!A12:D"), "select Col3 where Col1 >= date \'' +
+      var formulaBase = '(SUM(QUERY(IMPORTRANGE("' + tarjetaUrl + '","\'Tarjeta Ahorro\'!A12:D54"), "select Col3 where Col1 >= date \'' +
         fechaLunesFormatted + '\' and Col1 <= date \'' + fechaDomingoFormatted + '\'", 0))' +
-        '-SUM(QUERY(IMPORTRANGE("' + tarjetaUrl + '","\'Tarjeta Ahorro\'!A12:D"), "select Col4 where Col1 >= date \'' +
+        '-SUM(QUERY(IMPORTRANGE("' + tarjetaUrl + '","\'Tarjeta Ahorro\'!A12:D54"), "select Col4 where Col1 >= date \'' +
         fechaLunesFormatted + '\' and Col1 <= date \'' + fechaDomingoFormatted + '\'", 0)))';
 
       var formulaSemana = (colActual === colStart && primeraEjecucionGlobal)
         ? '=' + formulaBase
-        : '=IFERROR(' + formulaBase + ', "")';
+        : '=IFERROR(' + formulaBase + ', 0)';
 
       var celdaDestino = sheetCondensado.getRange(socio.row, colDestino);
       if (semanaYaExiste) {
         if (!celdaDestino.getFormula() && celdaDestino.getValue() === '') {
-          celdaDestino.setFormula('=IFERROR(' + formulaBase + ', "")');
+          celdaDestino.setFormula('=IFERROR(' + formulaBase + ', 0)');
         }
       } else {
         celdaDestino.setFormula(formulaSemana);

@@ -29,7 +29,7 @@ function llenarCondensadoPrestamos() {
     var consulta = "select Col3 where Col1 >= date '" + fechaLunesFormatted +
       "' and Col1 <= date '" + fechaDomingoFormatted + "'";
 
-    return '=IFERROR(SUM(QUERY(IMPORTRANGE("' + fileId + '","' + rango + '"),"' + consulta + '",0)),"")';
+    return '=IFERROR(SUM(QUERY(IMPORTRANGE("' + fileId + '","' + rango + '"),"' + consulta + '",0)),0)';
   }
 
   function convertirTextoAClaveFecha(texto) {

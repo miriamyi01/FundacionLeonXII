@@ -44,16 +44,19 @@ Si solo quieres correr el proceso normal:
 
 Crea carpetas de socios a partir de `Inscripción`.
 
-- Detecta existentes por **número + nombre completo**.
+- Detecta existentes por **número + nombre completo** (ignora variaciones en iniciales).
 - Solo crea faltantes.
 - Formato de carpeta:
-	- `[Número] [INICIALES] [Nombre completo]`
+	- `[Número] [INICIALES] [Nombre] [Primer Apellido] [Segundo Apellido]`
+	- Iniciales = primera letra de nombre + primera letra apellido 1 + primera letra apellido 2 (mayúsculas)
 
 ### 2.2 `0.3-CreaciónHoja.gs` → `renombrarYAgregarHojas()`
 
 Crea o actualiza tarjetas de socios desde el archivo base.
 
-- Crea/reutiliza archivo:
+- Busca carpetas de socios (ignora variaciones en formato con/sin iniciales).
+- Extrae las iniciales desde la carpeta del socio `[Número] [INI...] [...]`.
+- Crea/reutiliza archivo con nombre:
 	- `[INICIALES] - TARJETA AHORRO Y PRESTAMO`
 - Agrega solo hojas faltantes (no duplica hojas ya existentes).
 - Actualiza campos clave:
@@ -140,8 +143,9 @@ Inicializa y mantiene el padrón base en los concentrados.
 
 Consolida movimientos semanales de ahorro/retiro en `Ahorros y Retiros`.
 
+- Extrae fechas desde `Tarjeta Ahorro` rango **A12:A54**.
 - Detecta semanas por fecha y escribe encabezados en fila 3.
-- Agrega fórmulas semanales por socio con `IMPORTRANGE` + `QUERY`.
+- Agrega fórmulas semanales por socio con `IMPORTRANGE` + `QUERY` sobre rango **A12:D54**.
 - Completa columnas faltantes sin duplicar semanas existentes.
 - Reaplica formato condicional al crear columnas nuevas.
 
@@ -149,18 +153,21 @@ Consolida movimientos semanales de ahorro/retiro en `Ahorros y Retiros`.
 
 Consolida movimientos semanales del fondo de emergencia.
 
+- Extrae fechas desde `Fondo de Emergencia` rango **A4:A25**.
 - Detecta semanas por fecha y escribe encabezados en fila 3.
-- Llena fórmula de suma semanal por socio desde `Fondo de Emergencia` de cada tarjeta.
+- Llena fórmula de suma semanal por socio con `IMPORTRANGE` + `QUERY` sobre rango **A4:D25**.
 - Si la semana ya existe, rellena solo celdas faltantes.
 - Escribe fórmula de suma en fila 2 para columnas nuevas.
+- Actualiza automáticamente la hoja `Resumen Fondo de Emergencia` con fechas y totales.
 
 ### 4.4 `4-InformePrestamoSemanal.gs` → `llenarCondensadoPrestamos()`
 
 Consolida abonos semanales de préstamos en la hoja `Préstamos`.
 
 - Detecta hojas `Tarjeta Prestamo #n` por socio.
+- Extrae pagos desde rango **B13:D23** de cada tarjeta de préstamo.
 - Carga columnas base (E:K) con `IMPORTRANGE` para nuevos préstamos.
-- Crea semanas en fila 3 y abonos semanales desde `B13:D23`.
+- Crea semanas en fila 3 y abonos semanales mediante `QUERY` dinámico.
 - Escribe suma en fila 2 solo para semanas nuevas (sin sobreescribir existentes).
 - Actualiza solo columnas nuevas en préstamos ya registrados.
 
@@ -209,6 +216,7 @@ Consolida abonos semanales de préstamos en la hoja `Préstamos`.
 
 ### ⚠️ Límites y precauciones
 
+- Los scripts buscan carpetas por **número + nombre completo**, ignorando variaciones en iniciales.
 - Si cambias manualmente nombres de hojas fuera del formato `Tarjeta Prestamo #n`, el script puede renombrarlas para normalizar.
 - Antes de correr masivo, prueba con 1–2 socios y revisa logs.
 - Si falta carpeta base o archivo base, el proceso se detiene y lo reporta en `Logger`.

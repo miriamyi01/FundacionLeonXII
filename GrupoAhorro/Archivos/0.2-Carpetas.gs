@@ -55,15 +55,18 @@ function crearCarpetasSocios() {
     // Buscar si ya existe una carpeta para este socio (por número y nombre completo, ignorando iniciales)
     var existeCarpeta = false;
     var subfolders = sociosMainFolder.getFolders();
-    var nombreCompleto = (nombre + ' ' + apellido1 + ' ' + apellido2).trim().toLowerCase();
+    var nombreCompleto = normalizarNombre(nombre + ' ' + apellido1 + ' ' + apellido2);
+    var numeroSocioNormalizado = normalizarNombre(numeroSocio);
     while (subfolders.hasNext()) {
       var folder = subfolders.next();
-      var folderName = folder.getName();
-      var partes = folderName.split(' ');
-      var folderNumero = partes[0] || '';
-      // El nombre completo está después de las iniciales (índice 2 en adelante)
-      var folderNombreCompleto = partes.slice(2).join(' ').trim().toLowerCase();
-      if (folderNumero === numeroSocio && folderNombreCompleto === nombreCompleto) {
+      var folderNameNormalizado = normalizarNombre(folder.getName());
+
+      // Acepta formatos históricos: con o sin iniciales, o con iniciales de segundo nombre.
+      var coincideExactoSinIniciales = (folderNameNormalizado === (numeroSocioNormalizado + ' ' + nombreCompleto));
+      var coincideConPrefijoNumero = folderNameNormalizado.indexOf(numeroSocioNormalizado + ' ') === 0;
+      var coincideNombreCompletoAlFinal = folderNameNormalizado.slice(-nombreCompleto.length) === nombreCompleto;
+
+      if (coincideExactoSinIniciales || (coincideConPrefijoNumero && coincideNombreCompletoAlFinal)) {
         existeCarpeta = true;
         sociosExistentes++;
         break;
