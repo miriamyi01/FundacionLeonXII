@@ -74,7 +74,7 @@ function registrarSociosCondensado() {
         celdaFormulaH.setFormula(formulaHEsperada);
       }
 
-      var formulaIEsperada = '=E' + fila + '-H' + fila;
+      var formulaIEsperada = '=E' + fila + '+H' + fila;
       var celdaFormulaI = sheet.getRange(fila, 9);
       if (celdaFormulaI.getFormula() !== formulaIEsperada) {
         celdaFormulaI.setFormula(formulaIEsperada);
@@ -245,7 +245,7 @@ function registrarSociosCondensado() {
             }
 
             var celdaFormulaIExistente = sheetCondensado.getRange(filaExistente, 9);
-            var formulaIExistenteEsperada = '=E' + filaExistente + '-H' + filaExistente;
+            var formulaIExistenteEsperada = '=E' + filaExistente + '+H' + filaExistente;
             if (celdaFormulaIExistente.getFormula() !== formulaIExistenteEsperada) {
               celdaFormulaIExistente.setFormula(formulaIExistenteEsperada);
             }
@@ -331,7 +331,7 @@ function registrarSociosCondensado() {
         }
 
         var celdaFormulaINueva = sheetCondensado.getRange(filaDestino, 9);
-        var formulaINuevaEsperada = '=E' + filaDestino + '-H' + filaDestino;
+        var formulaINuevaEsperada = '=E' + filaDestino + '+H' + filaDestino;
         if (celdaFormulaINueva.getFormula() !== formulaINuevaEsperada) {
           celdaFormulaINueva.setFormula(formulaINuevaEsperada);
         }

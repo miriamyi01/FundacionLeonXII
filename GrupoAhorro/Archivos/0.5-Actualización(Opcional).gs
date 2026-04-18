@@ -514,8 +514,8 @@ function actualizarFormulaF6PrestamosSocios() {
 
 
 
-// Copia los formatos condicionales de la hoja 'Fondo de Emergencia' del archivo base a cada socio
-function copiarFormatosCondicionalesFondoEmergenciaSocios() {
+// Copia los formatos condicionales de la hoja 'Tarjeta Ahorro' del archivo base a cada socio
+function copiarFormatosCondicionalesTarjetaAhorroSocios() {
   var rootFolderName = 'GA0452 METAMORFOSIS';
   var sociosFolderName = 'GA0452-SOCIOS AS';
 
@@ -571,13 +571,13 @@ function copiarFormatosCondicionalesFondoEmergenciaSocios() {
   }
 
   var ssBase = SpreadsheetApp.openById(baseFileId);
-  var hojaEmergenciaBase = ssBase.getSheetByName('Fondo de Emergencia');
-  if (!hojaEmergenciaBase) {
-    Logger.log('No se encontró la hoja "Fondo de Emergencia" en el archivo base.');
+  var hojaAhorroBase = ssBase.getSheetByName('Tarjeta Ahorro');
+  if (!hojaAhorroBase) {
+    Logger.log('No se encontró la hoja "Tarjeta Ahorro" en el archivo base.');
     return;
   }
 
-  var reglasBase = hojaEmergenciaBase.getConditionalFormatRules();
+  var reglasBase = hojaAhorroBase.getConditionalFormatRules();
 
   // Usar directamente la hoja 'Inscripción' del archivo activo para recorrer socios
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Inscripción');
@@ -631,33 +631,33 @@ function copiarFormatosCondicionalesFondoEmergenciaSocios() {
       continue;
     }
 
-    // Abrir archivo del socio y copiar reglas a la hoja Fondo de Emergencia
+    // Abrir archivo del socio y copiar reglas a la hoja Tarjeta Ahorro
     var destSS = SpreadsheetApp.openById(destFile.getId());
-    var hojaEmergenciaDestino = destSS.getSheetByName('Fondo de Emergencia');
-    if (!hojaEmergenciaDestino) {
+    var hojaAhorroDestino = destSS.getSheetByName('Tarjeta Ahorro');
+    if (!hojaAhorroDestino) {
       sociosProcesados++;
       continue;
     }
 
-    hojaEmergenciaDestino.setConditionalFormatRules([]);
+    hojaAhorroDestino.setConditionalFormatRules([]);
 
     if (reglasBase && reglasBase.length > 0) {
       var reglasCopiadas = reglasBase.map(function(regla) {
         var builder = regla.copy();
         var nuevosRangos = regla.getRanges().map(function(rangoBase) {
-          return hojaEmergenciaDestino.getRange(rangoBase.getA1Notation());
+          return hojaAhorroDestino.getRange(rangoBase.getA1Notation());
         });
         builder.setRanges(nuevosRangos);
         return builder.build();
       });
-      hojaEmergenciaDestino.setConditionalFormatRules(reglasCopiadas);
+      hojaAhorroDestino.setConditionalFormatRules(reglasCopiadas);
     }
 
     archivosActualizados++;
     sociosProcesados++;
   }
 
-  Logger.log('¡Copia de formatos condicionales de Fondo de Emergencia completada!');
+  Logger.log('¡Copia de formatos condicionales de Tarjeta Ahorro completada!');
   Logger.log('Socios procesados: ' + sociosProcesados);
   Logger.log('Archivos actualizados: ' + archivosActualizados);
 }
