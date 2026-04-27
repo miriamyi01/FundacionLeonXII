@@ -100,7 +100,7 @@ function llenarCondensadoEmergencias() {
     return;
   }
 
-  // Obtener IDs de socios desde la columna A, desde la fila 4 (después de encabezados)
+  // Obtener IDs de socios y mapear información de Drive de forma eficiente
   var lastRow = sheetCondensado.getLastRow();
   var socioStartRow = 4;
   var sociosRows = lastRow - socioStartRow + 1;
@@ -108,56 +108,25 @@ function llenarCondensadoEmergencias() {
     Logger.log('No hay filas de socios para procesar.');
     return;
   }
+
   var sociosData = sheetCondensado.getRange(socioStartRow, 1, sociosRows, 2).getValues();
+  
+  // Cargar todas las carpetas de socios una sola vez para evitar lentitud
+  var foldersIter = sociosMainFolder.getFolders();
+  var folderMap = {};
+  while (foldersIter.hasNext()) {
+    var f = foldersIter.next();
+    var id = String(f.getName().split(" ")[0]).trim();
+    folderMap[id] = f;
+  }
+
   var sociosInfo = [];
   for (var sr = 0; sr < sociosData.length; sr++) {
-    var socioIdRaw = sociosData[sr][0];
-    if (!socioIdRaw) continue;
-    sociosInfo.push({
-      row: socioStartRow + sr,
-      socioId: socioIdRaw,
-      nombre: String(sociosData[sr][1] || '').trim()
-    });
-  }
+    var socioId = String(sociosData[sr][0]).trim();
+    if (!socioId || !folderMap[socioId]) continue;
 
-  sociosInfo.sort(function(a, b) {
-    var cmp = a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
-    if (cmp !== 0) return cmp;
-    return String(a.socioId).localeCompare(String(b.socioId), 'es', { sensitivity: 'base' });
-  });
-
-  if (sociosInfo.length === 0) {
-    Logger.log('No hay socios válidos para procesar.');
-    return;
-  }
-
-  // Recolectar todas las fechas de todas las tarjetas de emergencia
-  var todasLasFechas = new Set();
-  var arregloFechas = [];
-
-  for (var i = 0; i < sociosInfo.length; i++) {
-    var socioId = sociosInfo[i].socioId;
-    if (!socioId) continue;
-
-    // Buscar carpeta del socio
-    var socioFolder = null;
-    var socioFoldersIter = sociosMainFolder.getFolders();
-    while (socioFoldersIter.hasNext()) {
-      var folder = socioFoldersIter.next();
-      if (folder.getName().indexOf(socioId + " ") === 0) {
-        socioFolder = folder;
-        break;
-      }
-    }
-    if (!socioFolder) {
-      Logger.log('No se encontró carpeta para socio: ' + socioId);
-      continue;
-    }
-
-    // Buscar archivo TARJETA AHORRO Y PRESTAMO
-    var carpetaNombre = socioFolder.getName();
-    var partes = carpetaNombre.split(" ");
-    var iniciales = partes.length > 1 ? partes[1] : "";
+    var socioFolder = folderMap[socioId];
+    var iniciales = socioFolder.getName().split(" ")[1] || "";
     var tarjetaFiles = socioFolder.getFiles();
     var tarjetaFile = null;
     while (tarjetaFiles.hasNext()) {
@@ -167,32 +136,45 @@ function llenarCondensadoEmergencias() {
         break;
       }
     }
-    if (!tarjetaFile) {
-      Logger.log('No se encontró archivo TARJETA AHORRO Y PRESTAMO para socio: ' + socioId);
-      continue;
-    }
 
-    var tarjetaId = tarjetaFile.getId();
-    var tarjeta;
-    try {
-      tarjeta = SpreadsheetApp.openById(tarjetaId);
-    } catch (e) {
-      Logger.log('Error abriendo archivo para socio ' + socioId + ': ' + e);
-      continue;
-    }
+    if (tarjetaFile) {
+      var tarjetaId = tarjetaFile.getId();
+      var gidEmergencia = "";
+      try {
+        var tempSs = SpreadsheetApp.openById(tarjetaId);
+        var shE = tempSs.getSheetByName('Fondo de Emergencia');
+        if (shE) gidEmergencia = shE.getSheetId();
+      } catch(e) {}
 
-    // Obtener fechas de la hoja "Fondo de Emergencia" rango A4:A25
+      sociosInfo.push({
+        row: socioStartRow + sr,
+        socioId: socioId,
+        nombre: String(sociosData[sr][1] || '').trim(),
+        tarjetaId: tarjetaId,
+        tarjetaUrl: 'https://docs.google.com/spreadsheets/d/' + tarjetaId,
+        gidEmergencia: gidEmergencia
+      });
+    }
+  }
+
+  if (sociosInfo.length === 0) return Logger.log('No se encontraron tarjetas válidas.');
+
+  // Recolectar todas las fechas de todas las tarjetas (ahora optimizado)
+  var todasLasFechas = new Set();
+  var arregloFechas = [];
+  for (var i = 0; i < sociosInfo.length; i++) {
     try {
+      var tarjeta = SpreadsheetApp.openById(sociosInfo[i].tarjetaId);
       var tarjetaEmergencia = tarjeta.getSheetByName('Fondo de Emergencia');
       if (tarjetaEmergencia) {
         var datosAhorro = tarjetaEmergencia.getRange('A4:A25').getValues();
         for (var j = 0; j < datosAhorro.length; j++) {
-          var fecha = datosAhorro[j][0];
-          if (fecha && fecha instanceof Date) {
-            var fechaStr = Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-            if (!todasLasFechas.has(fechaStr)) {
-              todasLasFechas.add(fechaStr);
-              arregloFechas.push(new Date(fecha));
+          var f = datosAhorro[j][0];
+          if (f && f instanceof Date) {
+            var fStr = Utilities.formatDate(f, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+            if (!todasLasFechas.has(fStr)) {
+              todasLasFechas.add(fStr);
+              arregloFechas.push(new Date(f));
             }
           }
         }
@@ -284,47 +266,23 @@ function llenarCondensadoEmergencias() {
       Logger.log('Semana ' + fechaLunesStr + ' ya existe, rellenando faltantes.');
     }
 
-    // Para cada socio, poner ImportRange de la tarjeta de préstamo para esa semana
+    // Para cada socio, actualizar nombre/enlace y poner fórmulas
     for (var i = 0; i < sociosInfo.length; i++) {
       var socio = sociosInfo[i];
-      var socioId = socio.socioId;
-      if (!socioId) continue;
 
-      // Buscar carpeta del socio
-      var socioFolder = null;
-      var socioFoldersIter = sociosMainFolder.getFolders();
-      while (socioFoldersIter.hasNext()) {
-        var folder = socioFoldersIter.next();
-        if (folder.getName().indexOf(socioId + " ") === 0) {
-          socioFolder = folder;
-          break;
-        }
+      // Actualizar columna B con el enlace a la pestaña de Emergencia
+      var celdaNombre = sheetCondensado.getRange(socio.row, 2);
+      var finalUrl = socio.tarjetaUrl + (socio.gidEmergencia ? '#gid=' + socio.gidEmergencia : '');
+      var linkFormula = '=HYPERLINK("' + finalUrl + '", "' + socio.nombre + '")';
+      if (celdaNombre.getFormula() !== linkFormula) {
+        celdaNombre.setFormula(linkFormula);
       }
-      if (!socioFolder) continue;
 
-      // Buscar archivo TARJETA AHORRO Y PRESTAMO
-      var carpetaNombre = socioFolder.getName();
-      var partes = carpetaNombre.split(" ");
-      var iniciales = partes.length > 1 ? partes[1] : "";
-      var tarjetaFiles = socioFolder.getFiles();
-      var tarjetaFile = null;
-      while (tarjetaFiles.hasNext()) {
-        var tf = tarjetaFiles.next();
-        if (tf.getName().indexOf(iniciales) !== -1 && tf.getName().indexOf('TARJETA AHORRO Y PRESTAMO') !== -1) {
-          tarjetaFile = tf;
-          break;
-        }
-      }
-      if (!tarjetaFile) continue;
-
-      var tarjetaId = tarjetaFile.getId();
-      var tarjetaUrl = 'https://docs.google.com/spreadsheets/d/' + tarjetaId;
-
-      // Suma de aportaciones (C) en esa semana desde Fondo de Emergencia usando QUERY
+      // Construir fórmula de aportaciones
       var fechaLunesFormatted = Utilities.formatDate(semana.lunesFecha, 'UTC', 'yyyy-MM-dd');
       var fechaDomingoFormatted = Utilities.formatDate(semana.domingoFecha, 'UTC', 'yyyy-MM-dd');
       
-      var formulaBase = 'SUM(QUERY(IMPORTRANGE("' + tarjetaUrl + '","\'Fondo de Emergencia\'!A4:D25"), "select Col3 where Col1 >= date \'' +
+      var formulaBase = 'SUM(QUERY(IMPORTRANGE("' + socio.tarjetaUrl + '","\'Fondo de Emergencia\'!A4:D25"), "select Col3 where Col1 >= date \'' +
         fechaLunesFormatted + '\' and Col1 <= date \'' + fechaDomingoFormatted + '\'", 0))';
 
       var formulaSemana = '=IFERROR(' + formulaBase + ', 0)';

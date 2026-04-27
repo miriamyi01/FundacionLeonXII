@@ -18,71 +18,6 @@ function registrarSociosCondensado() {
     return true;
   }
 
-  function construirFormulaNombreCompleto(fileUrl, filaOrigen) {
-    return '=TRIM(IFERROR(IMPORTRANGE("' + fileUrl + '", "Inscripción!B' + filaOrigen + '"), "")&" "&IFERROR(IMPORTRANGE("' + fileUrl + '", "Inscripción!C' + filaOrigen + '"), "")&" "&IFERROR(IMPORTRANGE("' + fileUrl + '", "Inscripción!D' + filaOrigen + '"), ""))';
-  }
-
-  function extraerFilaDesdeFormulaImportRange(formula) {
-    if (!formula) return null;
-    var m = formula.match(/Inscripci[oó]n![A-Z]+(\d+)/i);
-    return m ? parseInt(m[1], 10) : null;
-  }
-
-  function ordenarSociosAlfabeticamente(sheet, aplicarFormulasAhorros) {
-    var ultimaFila = sheet.getLastRow();
-    if (ultimaFila < 4) return;
-
-    var ultimaColumna = sheet.getLastColumn();
-    var rangoDatos = sheet.getRange(4, 1, ultimaFila - 3, ultimaColumna);
-    rangoDatos.sort({ column: 2, ascending: true });
-
-    var codigosOrdenados = sheet.getRange(4, 1, ultimaFila - 3, 1).getValues();
-    for (var i = 0; i < codigosOrdenados.length; i++) {
-      var codigo = normalizarCodigo(codigosOrdenados[i][0]);
-      if (!codigo) continue;
-      var fila = 4 + i;
-      if (!aplicarFormulasAhorros) {
-        var formulaEmergenciaEsperada = '=SUM(F' + fila + ':' + fila + ')';
-        var celdaFormulaEmergencia = sheet.getRange(fila, 5);
-        if (celdaFormulaEmergencia.getFormula() !== formulaEmergenciaEsperada) {
-          celdaFormulaEmergencia.setFormula(formulaEmergenciaEsperada);
-        }
-        continue;
-      }
-      var formulaEEsperada = '=SUMIF(J' + fila + ':' + fila + ',">0")';
-      var formulaFEsperada = '=E' + fila + '*F$2';
-
-      var celdaFormulaE = sheet.getRange(fila, 5);
-      if (celdaFormulaE.getFormula() !== formulaEEsperada) {
-        celdaFormulaE.setFormula(formulaEEsperada);
-      }
-
-      var celdaFormulaF = sheet.getRange(fila, 6);
-      if (celdaFormulaF.getFormula() !== formulaFEsperada) {
-        celdaFormulaF.setFormula(formulaFEsperada);
-      }
-
-      var formulaGEsperada = '=E' + fila + '+F' + fila;
-      var celdaFormulaG = sheet.getRange(fila, 7);
-      if (celdaFormulaG.getFormula() !== formulaGEsperada) {
-        celdaFormulaG.setFormula(formulaGEsperada);
-      }
-
-      var formulaHEsperada = '=SUMIF(J' + fila + ':' + fila + ',"<0")';
-      var celdaFormulaH = sheet.getRange(fila, 8);
-      if (celdaFormulaH.getFormula() !== formulaHEsperada) {
-        celdaFormulaH.setFormula(formulaHEsperada);
-      }
-
-      var formulaIEsperada = '=E' + fila + '+H' + fila;
-      var celdaFormulaI = sheet.getRange(fila, 9);
-      if (celdaFormulaI.getFormula() !== formulaIEsperada) {
-        celdaFormulaI.setFormula(formulaIEsperada);
-      }
-    }
-
-    unirCeldasNombre(sheet);
-  }
 
   function unirCeldasNombre(sheet) {
     var ultimaFila = sheet.getLastRow();
@@ -103,6 +38,7 @@ function registrarSociosCondensado() {
   // Nombres de carpetas para buscar
   var rootFolderName = 'GA0452 METAMORFOSIS';
   var fichaFolderName = 'GA0452-FICHA DE INSCRIPCIÓN';
+  var sociosFolderName = 'GA0452-SOCIOS AS';
 
   // Buscar la carpeta raíz
   var folders = DriveApp.getFolders();
@@ -119,18 +55,22 @@ function registrarSociosCondensado() {
     return;
   }
 
-  // Buscar la carpeta de fichas dentro de la carpeta raíz
+  // Buscar las carpetas necesarias dentro de la carpeta raíz
   var carpetaFicha = null;
+  var sociosMainFolder = null;
   var subFolders = rootFolder.getFolders();
   while (subFolders.hasNext()) {
     var sf = subFolders.next();
-    if (sf.getName().indexOf(fichaFolderName) !== -1) {
+    var sfName = sf.getName();
+    if (sfName.indexOf(fichaFolderName) !== -1) {
       carpetaFicha = sf;
-      break;
+    } else if (sfName.indexOf(sociosFolderName) !== -1) {
+      sociosMainFolder = sf;
     }
   }
-  if (!carpetaFicha) {
-    Logger.log('No se encontró la carpeta ' + fichaFolderName + ' dentro de ' + rootFolderName);
+
+  if (!carpetaFicha || !sociosMainFolder) {
+    Logger.log('No se encontró alguna de las carpetas necesarias (' + fichaFolderName + ' o ' + sociosFolderName + ') dentro de ' + rootFolderName);
     return;
   }
 
@@ -157,6 +97,78 @@ function registrarSociosCondensado() {
   if (importRows === -1) importRows = dataInscripcion.length;
   if (importRows === 0) return Logger.log('No hay filas para importar.');
 
+  // Helper function to find socio folder and card file, and construct URL/name
+  function getSocioCardInfo(socioId, dataInscripcionRowIndex) {
+    var socioFolder = null;
+    var socioFoldersIter = sociosMainFolder.getFolders();
+    while (socioFoldersIter.hasNext()) {
+      var folder = socioFoldersIter.next();
+      if (folder.getName().indexOf(socioId + " ") === 0) {
+        socioFolder = folder;
+        break;
+      }
+    }
+
+    var fullName = dataInscripcion[dataInscripcionRowIndex][1] + ' ' + dataInscripcion[dataInscripcionRowIndex][2] + ' ' + dataInscripcion[dataInscripcionRowIndex][3];
+    fullName = fullName.trim();
+
+    if (!socioFolder) {
+      Logger.log('No se encontró carpeta para socio: ' + socioId + '. Usando solo el nombre.');
+      return { url: null, fullName: fullName };
+    }
+
+    var carpetaNombre = socioFolder.getName();
+    var partes = carpetaNombre.split(" ");
+    var iniciales = partes.length > 1 ? partes[1] : "";
+
+    var tarjetaFiles = socioFolder.getFiles();
+    var tarjetaFile = null;
+    while (tarjetaFiles.hasNext()) {
+      var tf = tarjetaFiles.next();
+      if (
+        tf.getName().indexOf(iniciales) !== -1 &&
+        tf.getName().indexOf('TARJETA AHORRO Y PRESTAMO') !== -1
+      ) {
+        tarjetaFile = tf;
+        break;
+      }
+    }
+
+    if (!tarjetaFile) {
+      Logger.log('No se encontró archivo TARJETA AHORRO Y PRESTAMO para socio: ' + socioId + ' (' + iniciales + '). Usando solo el nombre.');
+      return { url: null, fullName: fullName, gidAhorro: null, gidEmergencia: null };
+    }
+
+    var tarjetaId = tarjetaFile.getId();
+    var tarjetaUrl = 'https://docs.google.com/spreadsheets/d/' + tarjetaId;
+    
+    // Abrimos la tarjeta una sola vez para obtener los IDs de las pestañas (GIDs)
+    var gidAhorro = "";
+    var gidEmergencia = "";
+    try {
+      var tempSs = SpreadsheetApp.openById(tarjetaId);
+      var shA = tempSs.getSheetByName('Tarjeta Ahorro');
+      if (shA) gidAhorro = shA.getSheetId();
+      var shE = tempSs.getSheetByName('Fondo de Emergencia');
+      if (shE) gidEmergencia = shE.getSheetId();
+    } catch (e) {
+      Logger.log('Aviso: No se pudieron obtener los GIDs de las pestañas para el socio ' + socioId);
+    }
+
+    return { url: tarjetaUrl, fullName: fullName, gidAhorro: gidAhorro, gidEmergencia: gidEmergencia };
+  }
+
+  // Pre-compute socio card info to avoid repeated Drive API calls
+  var socioCardInfoMap = {};
+  for (var i = 0; i < importRows; i++) {
+    var numeroSocio = dataInscripcion[i][0];
+    var codigo = normalizarCodigo(numeroSocio);
+    var valorFInscripcion = dataInscripcion[i][5];
+    if (codigo && valorFEsValido(valorFInscripcion)) {
+      socioCardInfoMap[codigo] = getSocioCardInfo(codigo, i);
+    }
+  }
+
   function procesarHojaCondensado(nombreHoja) {
     var sheetCondensado = ss.getSheetByName(nombreHoja);
     if (!sheetCondensado) {
@@ -165,6 +177,7 @@ function registrarSociosCondensado() {
     }
 
     var esHojaAhorros = nombreHoja === 'Ahorros y Retiros';
+    var esHojaFondoSocial = nombreHoja === 'Fondo Social';
 
     var celdaTotalE = sheetCondensado.getRange('E2');
     var formulaTotalEEsperada = '=SUM(E4:E)';
@@ -197,25 +210,28 @@ function registrarSociosCondensado() {
     var filasCondensado = Math.max(0, ultimaFilaHoja - 3);
     var ultimaFilaConSocio = 3;
 
-    var sociosExistentes = [];
     var sociosExistentesMap = {};
+    var sociosProcessedCount = 0;
+
     if (filasCondensado > 0) {
-      var dataCondensado = sheetCondensado.getRange(4, 1, filasCondensado, 1).getValues();
-      for (var i = 0; i < dataCondensado.length; i++) {
-        var codigoExistente = normalizarCodigo(dataCondensado[i][0]);
+      var existingSocioCodes = sheetCondensado.getRange(4, 1, filasCondensado, 1).getValues();
+      for (var i = 0; i < existingSocioCodes.length; i++) {
+        var codigoExistente = normalizarCodigo(existingSocioCodes[i][0]);
         if (codigoExistente) {
-          sociosExistentes.push(codigoExistente);
-          sociosExistentesMap[codigoExistente] = true;
           var filaExistente = 4 + i;
           ultimaFilaConSocio = filaExistente;
 
-          var formulaAExistente = sheetCondensado.getRange(filaExistente, 1).getFormula();
-          var filaOrigenExistente = extraerFilaDesdeFormulaImportRange(formulaAExistente);
-          if (filaOrigenExistente) {
-            var formulaNombreCompletoExistente = construirFormulaNombreCompleto(fileUrl, filaOrigenExistente);
-            var celdaNombreExistente = sheetCondensado.getRange(filaExistente, 2);
-            if (celdaNombreExistente.getFormula() !== formulaNombreCompletoExistente) {
-              celdaNombreExistente.setFormula(formulaNombreCompletoExistente);
+          var cardInfo = socioCardInfoMap[codigoExistente];
+          if (cardInfo) {
+            // Update Column A (Socio ID) to be just the value
+            sheetCondensado.getRange(filaExistente, 1).setValue(codigoExistente);
+
+            // Update Column B (Name/Link)
+            var targetGid = (esHojaAhorros || esHojaFondoSocial) ? cardInfo.gidAhorro : cardInfo.gidEmergencia;
+            var finalUrl = cardInfo.url + (targetGid ? '#gid=' + targetGid : '');
+            var newFormulaB = cardInfo.url ? '=HYPERLINK("' + finalUrl + '", "' + cardInfo.fullName + '")' : cardInfo.fullName;
+            if (sheetCondensado.getRange(filaExistente, 2).getFormula() !== newFormulaB) {
+              sheetCondensado.getRange(filaExistente, 2).setFormula(newFormulaB);
             }
           }
 
@@ -249,61 +265,77 @@ function registrarSociosCondensado() {
             if (celdaFormulaIExistente.getFormula() !== formulaIExistenteEsperada) {
               celdaFormulaIExistente.setFormula(formulaIExistenteEsperada);
             }
-          } else {
+          } else if (nombreHoja === 'Fondo de Emergencia') {
             var celdaFormulaEEmergenciaExistente = sheetCondensado.getRange(filaExistente, 5);
             var formulaEEmergenciaExistente = '=SUM(F' + filaExistente + ':' + filaExistente + ')';
             if (celdaFormulaEEmergenciaExistente.getFormula() !== formulaEEmergenciaExistente) {
               celdaFormulaEEmergenciaExistente.setFormula(formulaEEmergenciaExistente);
             }
+          } else if (esHojaFondoSocial) {
+            var celdaSocialExistente = sheetCondensado.getRange(filaExistente, 5);
+            var formulaSocialExistente = cardInfo.url ? '=IFERROR(IMPORTRANGE("' + cardInfo.url + '", "\'Tarjeta Ahorro\'!F1"), 0)' : '0';
+            if (celdaSocialExistente.getFormula() !== formulaSocialExistente) {
+              celdaSocialExistente.setFormula(formulaSocialExistente);
+            }
           }
+          sociosExistentesMap[codigoExistente] = true; // Mark as processed
+          sociosProcessedCount++;
         }
       }
     }
 
     // Identificar socios nuevos que necesitan ser agregados
-    var sociosNuevos = [];
+    var sociosNuevosParaAgregar = [];
     for (var i = 0; i < importRows; i++) {
       var numeroSocio = dataInscripcion[i][0];
       var codigoNuevo = normalizarCodigo(numeroSocio);
       var valorFInscripcion = dataInscripcion[i][5];
       if (codigoNuevo && valorFEsValido(valorFInscripcion) && !sociosExistentesMap[codigoNuevo]) {
-        sociosNuevos.push({
-          fila: 7 + i,
-          numeroSocio: numeroSocio,
-          codigoSocio: codigoNuevo
+        sociosNuevosParaAgregar.push({
+          codigoSocio: codigoNuevo,
+          dataInscripcionRowIndex: i // Store index to get card info
         });
         sociosExistentesMap[codigoNuevo] = true;
       }
-    }
+    } // End of loop for identifying new socios
 
-    if (sociosNuevos.length === 0) {
-      ordenarSociosAlfabeticamente(sheetCondensado, esHojaAhorros);
+    if (sociosNuevosParaAgregar.length === 0) {
+      unirCeldasNombre(sheetCondensado);
       Logger.log('[' + nombreHoja + '] No hay socios nuevos para agregar. Todos los socios ya están registrados.');
       return;
     }
 
     // Calcular dónde empezar a agregar los nuevos socios
-    var filaInicioNuevos = Math.max(4, ultimaFilaConSocio + 1);
+    var filaInicioNuevos = Math.max(4, ultimaFilaHoja + 1);
     
     // Asegurar que hay suficientes filas físicas para los nuevos socios
-    var ultimaFilaNecesaria = filaInicioNuevos + sociosNuevos.length - 1;
+    var ultimaFilaNecesaria = filaInicioNuevos + sociosNuevosParaAgregar.length - 1;
     var maxRows = sheetCondensado.getMaxRows();
     if (maxRows < ultimaFilaNecesaria) {
       var filasFaltantes = ultimaFilaNecesaria - maxRows;
       sheetCondensado.insertRowsAfter(maxRows, filasFaltantes);
     }
 
-    // Agregar solo los socios nuevos
+    // Add new socios
     var sociosAgregados = 0;
-    for (var i = 0; i < sociosNuevos.length; i++) {
-      var socioNuevo = sociosNuevos[i];
+    for (var i = 0; i < sociosNuevosParaAgregar.length; i++) {
+      var socioNuevo = sociosNuevosParaAgregar[i];
       var filaDestino = filaInicioNuevos + i;
 
-      var formulaCodigo = '=IMPORTRANGE("' + fileUrl + '", "Inscripción!A' + socioNuevo.fila + '")';
-      sheetCondensado.getRange(filaDestino, 1).setFormula(formulaCodigo);
+      var cardInfo = socioCardInfoMap[socioNuevo.codigoSocio];
+      if (!cardInfo) {
+        Logger.log('Error: No se encontró información de tarjeta para socio nuevo ' + socioNuevo.codigoSocio + '. No se agregará.');
+        continue;
+      }
 
-      var formulaNombreCompleto = construirFormulaNombreCompleto(fileUrl, socioNuevo.fila);
-      sheetCondensado.getRange(filaDestino, 2).setFormula(formulaNombreCompleto);
+      // Set Column A (Socio ID)
+      sheetCondensado.getRange(filaDestino, 1).setValue(socioNuevo.codigoSocio);
+
+      // Set Column B (Name/Link)
+      var targetGid = (esHojaAhorros || esHojaFondoSocial) ? cardInfo.gidAhorro : cardInfo.gidEmergencia;
+      var finalUrl = cardInfo.url + (targetGid ? '#gid=' + targetGid : '');
+      var newFormulaB = cardInfo.url ? '=HYPERLINK("' + finalUrl + '", "' + cardInfo.fullName + '")' : cardInfo.fullName;
+      sheetCondensado.getRange(filaDestino, 2).setFormula(newFormulaB);
 
       if (esHojaAhorros) {
         var celdaFormulaENueva = sheetCondensado.getRange(filaDestino, 5);
@@ -335,24 +367,31 @@ function registrarSociosCondensado() {
         if (celdaFormulaINueva.getFormula() !== formulaINuevaEsperada) {
           celdaFormulaINueva.setFormula(formulaINuevaEsperada);
         }
-      } else {
+      } else if (nombreHoja === 'Fondo de Emergencia') {
         var celdaFormulaEEmergenciaNueva = sheetCondensado.getRange(filaDestino, 5);
         var formulaEEmergenciaNueva = '=SUM(F' + filaDestino + ':' + filaDestino + ')';
         if (celdaFormulaEEmergenciaNueva.getFormula() !== formulaEEmergenciaNueva) {
           celdaFormulaEEmergenciaNueva.setFormula(formulaEEmergenciaNueva);
+        }
+      } else if (esHojaFondoSocial) {
+        var celdaSocialNueva = sheetCondensado.getRange(filaDestino, 5);
+        var formulaSocialNueva = cardInfo.url ? '=IFERROR(IMPORTRANGE("' + cardInfo.url + '", "\'Tarjeta Ahorro\'!F1"), 0)' : '0';
+        if (celdaSocialNueva.getFormula() !== formulaSocialNueva) {
+          celdaSocialNueva.setFormula(formulaSocialNueva);
         }
       }
       sociosAgregados++;
     }
 
     Logger.log('[' + nombreHoja + '] Proceso completado exitosamente:');
-    Logger.log('[' + nombreHoja + '] - Socios existentes: ' + sociosExistentes.length);
+    Logger.log('[' + nombreHoja + '] - Socios existentes actualizados: ' + sociosProcessedCount);
     Logger.log('[' + nombreHoja + '] - Socios nuevos agregados: ' + sociosAgregados);
-    Logger.log('[' + nombreHoja + '] - Total socios en condensado: ' + (sociosExistentes.length + sociosAgregados));
+    Logger.log('[' + nombreHoja + '] - Total socios en condensado: ' + (sociosProcessedCount + sociosAgregados));
 
-    ordenarSociosAlfabeticamente(sheetCondensado, esHojaAhorros);
+    unirCeldasNombre(sheetCondensado);
   }
 
   procesarHojaCondensado('Ahorros y Retiros');
   procesarHojaCondensado('Fondo de Emergencia');
+  procesarHojaCondensado('Fondo Social');
 }

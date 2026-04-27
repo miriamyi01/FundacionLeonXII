@@ -6,6 +6,21 @@ function llenarCondensadoPrestamos() {
     return;
   }
 
+  function normalizarCodigo(codigo) {
+    return (codigo === null || codigo === undefined) ? '' : codigo.toString().trim();
+  }
+
+  function unirCeldasNombre(sheet) {
+    var ultimaFila = sheet.getLastRow();
+    if (ultimaFila < 4) return;
+    var filasDatos = ultimaFila - 3;
+    sheet.getRange(4, 2, filasDatos, 3).breakApart(); // Columnas B:D
+    var codigos = sheet.getRange(4, 1, filasDatos, 1).getValues();
+    for (var i = 0; i < codigos.length; i++) {
+      if (normalizarCodigo(codigos[i][0])) sheet.getRange(4 + i, 2, 1, 3).merge();
+    }
+  }
+
   function obtenerLunesDelaSemana(fecha) {
     var tz = Session.getScriptTimeZone();
     var ymd = Utilities.formatDate(fecha, tz, 'yyyy-MM-dd');
@@ -226,37 +241,35 @@ function llenarCondensadoPrestamos() {
     return;
   }
 
+  // Optimización: Mapear carpetas de socios como en InformeAhorroSemanal
+  var foldersIter = sociosMainFolder.getFolders();
+  var folderMap = {};
+  while (foldersIter.hasNext()) {
+    var f = foldersIter.next();
+    var id = f.getName().split(" ")[0].trim();
+    folderMap[id] = f;
+  }
+
   var datosIns = sheetInscripcion.getRange(7, 1, lastRowIns - 6, 4).getValues();
   var filasPrestamos = [];
-  var detalleSemanalPorFila = [];
   var semanasMap = {};
-  var archivosPorPrestamo = {}; // Guardar archivo ID y nombre de hoja para IMPORTRANGE
 
   for (var i = 0; i < datosIns.length; i++) {
-    var socioId = datosIns[i][0];
-    if (!socioId) continue;
+    var socioId = normalizarCodigo(datosIns[i][0]);
+    if (!socioId || !folderMap[socioId]) continue;
 
+    var socioFolder = folderMap[socioId];
     var nombres = datosIns[i][1] || '';
     var primerApellido = datosIns[i][2] || '';
     var segundoApellido = datosIns[i][3] || '';
-    var nombreCompleto = (nombres + ' ' + primerApellido + ' ' + segundoApellido).replace(/\s+/g, ' ').trim();
-
-    var socioFolder = null;
-    var socioFoldersIter = sociosMainFolder.getFolders();
-    while (socioFoldersIter.hasNext()) {
-      var folder = socioFoldersIter.next();
-      if (folder.getName().indexOf(socioId + ' ') === 0) {
-        socioFolder = folder;
-        break;
-      }
-    }
-    if (!socioFolder) continue;
+    var nombreCompleto = (nombres + ' ' + primerApellido + ' ' + segundoApellido).trim();
 
     var carpetaNombre = socioFolder.getName();
     var partes = carpetaNombre.split(' ');
     var iniciales = partes.length > 1 ? partes[1] : '';
     var tarjetaFiles = socioFolder.getFiles();
     var tarjetaFile = null;
+    
     while (tarjetaFiles.hasNext()) {
       var tf = tarjetaFiles.next();
       if (tf.getName().indexOf(iniciales) !== -1 && tf.getName().indexOf('TARJETA AHORRO Y PRESTAMO') !== -1) {
@@ -264,75 +277,46 @@ function llenarCondensadoPrestamos() {
         break;
       }
     }
-    if (!tarjetaFile) continue;
-
-    var tarjeta;
+    
     try {
-      tarjeta = SpreadsheetApp.openById(tarjetaFile.getId());
+      if (!tarjetaFile) continue;
+      var tarjetaId = tarjetaFile.getId();
+      var tarjeta = SpreadsheetApp.openById(tarjetaId);
+      var tarjetaUrl = 'https://docs.google.com/spreadsheets/d/' + tarjetaId;
+      var hojas = tarjeta.getSheets();
+      
+      for (var h = 0; h < hojas.length; h++) {
+        var hojaPrestamo = hojas[h];
+        var nombreHoja = hojaPrestamo.getName();
+        if (nombreHoja.indexOf('Tarjeta Prestamo #') !== 0) continue;
+
+        var cantidad = hojaPrestamo.getRange('E12').getValue();
+        if (!cantidad || cantidad === 0) continue;
+
+        var gid = hojaPrestamo.getSheetId();
+
+        // Recolectar fechas para el encabezado global (incluso si no hay pagos aún)
+        var datosPagos = hojaPrestamo.getRange('B13:B23').getValues();
+        for (var p = 0; p < datosPagos.length; p++) {
+          var fechaPago = datosPagos[p][0];
+          if (fechaPago instanceof Date) {
+            var lunes = obtenerLunesDelaSemana(fechaPago);
+            var claveSemana = Utilities.formatDate(lunes, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+            if (!semanasMap[claveSemana]) semanasMap[claveSemana] = lunes;
+          }
+        }
+
+        filasPrestamos.push({
+          codigo: socioId,
+          nombreCompleto: nombreCompleto,
+          tarjetaFileId: tarjetaId,
+          tarjetaUrl: tarjetaUrl,
+          nombreHoja: nombreHoja,
+          gid: gid
+        });
+      }
     } catch (e) {
       Logger.log('Error abriendo archivo para socio ' + socioId + ': ' + e);
-      continue;
-    }
-
-    var codigo = socioId;
-    try {
-      var hojaAhorro = tarjeta.getSheetByName('Tarjeta Ahorro');
-      if (hojaAhorro) {
-        var codigoDesdeTarjeta = hojaAhorro.getRange('D1').getValue();
-        if (codigoDesdeTarjeta) codigo = codigoDesdeTarjeta;
-      }
-    } catch (e) {
-      Logger.log('Error leyendo código para socio ' + socioId + ': ' + e);
-    }
-
-    var hojas = tarjeta.getSheets();
-    for (var h = 0; h < hojas.length; h++) {
-      var hojaPrestamo = hojas[h];
-      var nombreHoja = hojaPrestamo.getName();
-      if (nombreHoja.indexOf('Tarjeta Prestamo #') !== 0) continue;
-
-      var cantidad = hojaPrestamo.getRange('E12').getValue();
-      if (!cantidad || cantidad === 0) continue;
-
-      // Abonos por semana (lunes) usando fecha en B y abono en D
-      var datosPagos = hojaPrestamo.getRange('B13:D23').getValues();
-      var pagosPorSemana = {};
-      for (var p = 0; p < datosPagos.length; p++) {
-        var fechaPago = datosPagos[p][0]; // B
-        var abonoPrestamoSem = Number(datosPagos[p][2]) || 0; // D
-
-        if (!(fechaPago instanceof Date) || abonoPrestamoSem === 0) continue;
-
-        var lunes = obtenerLunesDelaSemana(fechaPago);
-        var claveSemana = Utilities.formatDate(lunes, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-
-        if (!pagosPorSemana[claveSemana]) pagosPorSemana[claveSemana] = 0;
-        pagosPorSemana[claveSemana] += abonoPrestamoSem;
-
-        if (!semanasMap[claveSemana]) {
-          semanasMap[claveSemana] = new Date(lunes);
-        }
-      }
-
-      var tarjetaId = tarjetaFile.getId();
-      var keyPrestamo = codigo + '_' + nombreHoja;
-      
-      filasPrestamos.push({
-        codigo: codigo,
-        nombreCompleto: nombreCompleto,
-        nombres: nombres,
-        primerApellido: primerApellido,
-        segundoApellido: segundoApellido,
-        tarjetaFileId: tarjetaId,
-        nombreHoja: nombreHoja
-      });
-      
-      archivosPorPrestamo[keyPrestamo] = {
-        fileId: tarjetaId,
-        sheetName: nombreHoja
-      };
-      
-      detalleSemanalPorFila.push(pagosPorSemana);
     }
   }
 
@@ -375,7 +359,9 @@ function llenarCondensadoPrestamos() {
       var fechaLunesHeader = semanasExistentes[clavesSemanasFinal[fh]].fecha;
       fechasHeader.push(Utilities.formatDate(fechaLunesHeader, 'UTC', 'dd/MM/yyyy'));
     }
-    sheetPrestamos.getRange(3, colSemanasInicio, 1, fechasHeader.length).setValues([fechasHeader]);
+    if (fechasHeader.length > 0) {
+      sheetPrestamos.getRange(3, colSemanasInicio, 1, fechasHeader.length).setValues([fechasHeader]);
+    }
 
     // Las fórmulas de suma en fila 2 se escribirán solo para semanas nuevas
 
@@ -415,6 +401,16 @@ function llenarCondensadoPrestamos() {
         var fileIdExist = filasPrestamos[idxNuevo].tarjetaFileId;
         var sheetNameExist = filasPrestamos[idxNuevo].nombreHoja;
         
+        // Actualizar enlace de nombre para socios existentes (estilo InformeInicial)
+        var finalUrlExist = filasPrestamos[idxNuevo].tarjetaUrl + (filasPrestamos[idxNuevo].gid ? '#gid=' + filasPrestamos[idxNuevo].gid : '');
+        var formulaNombreExist = filasPrestamos[idxNuevo].tarjetaUrl 
+          ? '=HYPERLINK("' + finalUrlExist + '", "' + filasPrestamos[idxNuevo].nombreCompleto + '")' 
+          : filasPrestamos[idxNuevo].nombreCompleto;
+          
+        if (sheetPrestamos.getRange(filaExistente, 2).getFormula() !== formulaNombreExist) {
+          sheetPrestamos.getRange(filaExistente, 2).setFormula(formulaNombreExist);
+        }
+
         for (var smn2 = 0; smn2 < semanasNuevasIndices.length; smn2++) {
           var idxSemana = semanasNuevasIndices[smn2];
           var claveSem = clavesSemanasFinal[idxSemana];
@@ -435,11 +431,10 @@ function llenarCondensadoPrestamos() {
         filasNuevas.push({
           codigo: filasPrestamos[idxNuevo].codigo,
           nombreCompleto: filasPrestamos[idxNuevo].nombreCompleto,
-          nombres: filasPrestamos[idxNuevo].nombres,
-          primerApellido: filasPrestamos[idxNuevo].primerApellido,
-          segundoApellido: filasPrestamos[idxNuevo].segundoApellido,
           tarjetaFileId: filasPrestamos[idxNuevo].tarjetaFileId,
-          nombreHoja: filasPrestamos[idxNuevo].nombreHoja
+          nombreHoja: filasPrestamos[idxNuevo].nombreHoja,
+          tarjetaUrl: filasPrestamos[idxNuevo].tarjetaUrl,
+          gid: filasPrestamos[idxNuevo].gid
         });
       }
     }
@@ -451,13 +446,12 @@ function llenarCondensadoPrestamos() {
         var fila = filasNuevas[fn];
         var filaDestino = primerFilaNueva + fn;
         
-        // Escribir solo código y nombre corrido
-        sheetPrestamos.getRange(filaDestino, 1, 1, 2).setValues([[
-          fila.codigo,
-          fila.nombreCompleto
-        ]]);
-        
-        // Escribir fórmulas IMPORTRANGE para las demás columnas (E:K)
+        // Escribir Código y Nombre con Hyperlink (estilo InformeInicial)
+        var finalUrl = fila.tarjetaUrl + (fila.gid ? '#gid=' + fila.gid : '');
+        sheetPrestamos.getRange(filaDestino, 1).setValue(fila.codigo);
+        var formulaHyperlink = fila.tarjetaUrl ? '=HYPERLINK("' + finalUrl + '", "' + fila.nombreCompleto + '")' : fila.nombreCompleto;
+        sheetPrestamos.getRange(filaDestino, 2).setFormula(formulaHyperlink);
+
         var formulas = [];
         var fileId = fila.tarjetaFileId;
         var sheetName = fila.nombreHoja;
@@ -472,15 +466,24 @@ function llenarCondensadoPrestamos() {
         
         sheetPrestamos.getRange(filaDestino, 5, 1, 7).setFormulas([formulas]);
         
-        // Escribir fórmulas semanales de abono a préstamo (B13:B23 fecha, D13:D23 abono)
-        var formulasSemanales = [];
-        for (var smnForm = 0; smnForm < clavesSemanasFinal.length; smnForm++) {
-          var claveSemanaFormula = clavesSemanasFinal[smnForm];
-          var lunesSemanaFormula = semanasExistentes[claveSemanaFormula].fecha;
-          formulasSemanales.push(construirFormulaAbonoSemanal(fileId, sheetName, lunesSemanaFormula));
+        // Escribir fórmulas semanales (validando que existan columnas)
+        if (clavesSemanasFinal.length > 0) {
+          var formulasSemanales = [];
+          for (var smnForm = 0; smnForm < clavesSemanasFinal.length; smnForm++) {
+            var claveSemanaFormula = clavesSemanasFinal[smnForm];
+            var lunesSemanaFormula = semanasExistentes[claveSemanaFormula].fecha;
+            formulasSemanales.push(construirFormulaAbonoSemanal(fileId, sheetName, lunesSemanaFormula));
+          }
+          sheetPrestamos.getRange(filaDestino, colSemanasInicio, 1, clavesSemanasFinal.length).setFormulas([formulasSemanales]);
         }
-        sheetPrestamos.getRange(filaDestino, colSemanasInicio, 1, clavesSemanasFinal.length).setFormulas([formulasSemanales]);
       }
+    }
+
+    // Ordenar alfabéticamente por nombre y unir celdas (B:D)
+    var ultimaFilaFinal = sheetPrestamos.getLastRow();
+    if (ultimaFilaFinal >= 4) {
+      sheetPrestamos.getRange(4, 1, ultimaFilaFinal - 3, sheetPrestamos.getLastColumn()).sort({ column: 2, ascending: true });
+      unirCeldasNombre(sheetPrestamos);
     }
 
     // Escribir fórmulas de semanas para préstamos modificados (solo nuevas columnas)
