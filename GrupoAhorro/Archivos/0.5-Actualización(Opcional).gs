@@ -38,29 +38,6 @@ function actualizarTarjetaAhorroSocios() {
   }
 
 
-  // Buscar el archivo base '04 TARJETA AHORRO Y PRESTAMO' en la carpeta del script
-  var scriptFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
-  var scriptFolder = scriptFile.getParents().next();
-  var filesBase = scriptFolder.getFiles();
-  var baseFileId = null;
-  while (filesBase.hasNext()) {
-    var fileBase = filesBase.next();
-    if (fileBase.getName().indexOf('04 TARJETA AHORRO Y PRESTAMO') !== -1 && fileBase.getMimeType() === MimeType.GOOGLE_SHEETS) {
-      baseFileId = fileBase.getId();
-      break;
-    }
-  }
-  if (!baseFileId) {
-    Logger.log('No se encontró el archivo base 04 TARJETA AHORRO Y PRESTAMO en la carpeta del script.');
-    return;
-  }
-  var ssBase = SpreadsheetApp.openById(baseFileId);
-  var hojaAhorroBase = ssBase.getSheetByName('Tarjeta Ahorro');
-  if (!hojaAhorroBase) {
-    Logger.log('No se encontró la hoja "Tarjeta Ahorro" en el archivo base.');
-    return;
-  }
-
   // Usar directamente la hoja 'Inscripción' del archivo activo
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Inscripción');
   if (!sheet) {
@@ -80,7 +57,6 @@ function actualizarTarjetaAhorroSocios() {
       sheet.getRange("C" + i).getValue().toString().trim(),
       sheet.getRange("D" + i).getValue().toString().trim()
     ].filter(Boolean).join(' ').trim();
-    var valorF = sheet.getRange("F" + i).getValue();
     if (!nombreCompleto) continue;
 
     var numeroU = numeroSocio.toUpperCase();
@@ -123,45 +99,8 @@ function actualizarTarjetaAhorroSocios() {
     }
 
 
-    // Ajustar altura de filas 2, 4 y 7 a 10px
-    hojaAhorro.setRowHeight(2, 10);
-    hojaAhorro.setRowHeight(4, 10);
-    hojaAhorro.setRowHeight(7, 10);
-
-    // Copiar solo color y estilo de B6 y E6 de la hoja base y aplicarlo a la hoja destino
-    var formatoB6 = hojaAhorroBase.getRange('B6');
-    var formatoE6 = hojaAhorroBase.getRange('E6');
-    hojaAhorro.getRange('B6')
-      .setFontColor(formatoB6.getFontColor())
-      .setFontLine(formatoB6.getFontLine())
-      .setFontStyle(formatoB6.getFontStyle())
-      .setFontWeight(formatoB6.getFontWeight());
-    hojaAhorro.getRange('E6')
-      .setFontColor(formatoE6.getFontColor())
-      .setFontLine(formatoE6.getFontLine())
-      .setFontStyle(formatoE6.getFontStyle())
-      .setFontWeight(formatoE6.getFontWeight());
-
-    // Sustituir F1 con el valor correspondiente de la columna F de la hoja Inscripción
-    hojaAhorro.getRange('F1').setValue(valorF);
-
-    // Quitar todos los formatos condicionales existentes
-    hojaAhorro.setConditionalFormatRules([]);
-
-    // Copiar y ajustar los formatos condicionales de la hoja 'Tarjeta Ahorro' del archivo base
-    var reglasBase = hojaAhorroBase.getConditionalFormatRules();
-    if (reglasBase && reglasBase.length > 0) {
-      var reglasCopiadas = reglasBase.map(function(regla) {
-        var builder = regla.copy();
-        // Ajustar los rangos para que sean sobre la hoja destino
-        var nuevosRangos = regla.getRanges().map(function(rangoBase) {
-          return hojaAhorro.getRange(rangoBase.getA1Notation());
-        });
-        builder.setRanges(nuevosRangos);
-        return builder.build();
-      });
-      hojaAhorro.setConditionalFormatRules(reglasCopiadas);
-    }
+    // Ajustar el ancho de la columna G a 119px
+    hojaAhorro.setColumnWidth(7, 119);
 
     archivosActualizados++;
     Logger.log("Actualizado: " + carpetaSocio.getName());
@@ -172,6 +111,8 @@ function actualizarTarjetaAhorroSocios() {
   Logger.log("Socios procesados: " + sociosProcesados);
   Logger.log("Archivos actualizados: " + archivosActualizados);
 }
+
+
 
 
 
@@ -288,6 +229,8 @@ function actualizarDatosPrestamosSocios() {
 
 
 
+
+
 // Coloca la fórmula =C3 en E12 en todas las hojas 'Tarjeta Prestamo #N' de cada socio
 function actualizarFormulaE12PrestamosSocios() {
   var rootFolderName = 'GA0452 METAMORFOSIS';
@@ -401,6 +344,8 @@ function actualizarFormulaE12PrestamosSocios() {
 
 
 
+
+
 // Coloca la fórmula =0.01/30 en F6 en todas las hojas 'Tarjeta Prestamo #N' de cada socio
 function actualizarFormulaF6PrestamosSocios() {
   var rootFolderName = 'GA0452 METAMORFOSIS';
@@ -511,6 +456,8 @@ function actualizarFormulaF6PrestamosSocios() {
   Logger.log('Socios procesados: ' + sociosProcesados);
   Logger.log('Archivos actualizados: ' + archivosActualizados);
 }
+
+
 
 
 
@@ -660,4 +607,161 @@ function copiarFormatosCondicionalesTarjetaAhorroSocios() {
   Logger.log('¡Copia de formatos condicionales de Tarjeta Ahorro completada!');
   Logger.log('Socios procesados: ' + sociosProcesados);
   Logger.log('Archivos actualizados: ' + archivosActualizados);
+}
+
+
+
+
+
+// Sincroniza la columna G y el rango F8:G10 en la hoja 'Tarjeta Ahorro' de cada socio
+function actualizarTarjetaAhorroSoloColumnas() {
+  var rootFolderName = 'GA0452 METAMORFOSIS';
+  var sociosFolderName = 'GA0452-SOCIOS AS';
+
+  function normalizarNombre(nombre) {
+    return nombre.toString().replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  // Buscar la carpeta raíz
+  var folders = DriveApp.getFolders();
+  var rootFolder = null;
+  while (folders.hasNext()) {
+    var f = folders.next();
+    if (normalizarNombre(f.getName()) === normalizarNombre(rootFolderName)) {
+      rootFolder = f;
+      break;
+    }
+  }
+  if (!rootFolder) {
+    Logger.log('No se encontró la carpeta raíz: ' + rootFolderName);
+    return;
+  }
+
+  // Buscar la carpeta de socios dentro del folder raíz
+  var sociosMainFolder = null;
+  var subFolders = rootFolder.getFolders();
+  while (subFolders.hasNext()) {
+    var sf = subFolders.next();
+    if (normalizarNombre(sf.getName()) === normalizarNombre(sociosFolderName)) {
+      sociosMainFolder = sf;
+      break;
+    }
+  }
+  if (!sociosMainFolder) {
+    Logger.log('No se encontró la carpeta ' + sociosFolderName + ' dentro de ' + rootFolderName);
+    return;
+  }
+
+
+  // Buscar el archivo base '04 TARJETA AHORRO Y PRESTAMO' en la carpeta del script
+  var scriptFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+  var scriptFolder = scriptFile.getParents().next();
+  var filesBase = scriptFolder.getFiles();
+  var baseFileId = null;
+  while (filesBase.hasNext()) {
+    var fileBase = filesBase.next();
+    if (fileBase.getName().indexOf('04 TARJETA AHORRO Y PRESTAMO') !== -1 && fileBase.getMimeType() === MimeType.GOOGLE_SHEETS) {
+      baseFileId = fileBase.getId();
+      break;
+    }
+  }
+  if (!baseFileId) {
+    Logger.log('No se encontró el archivo base 04 TARJETA AHORRO Y PRESTAMO en la carpeta del script.');
+    return;
+  }
+  var ssBase = SpreadsheetApp.openById(baseFileId);
+  var hojaAhorroBase = ssBase.getSheetByName('Tarjeta Ahorro');
+  if (!hojaAhorroBase) {
+    Logger.log('No se encontró la hoja "Tarjeta Ahorro" en el archivo base.');
+    return;
+  }
+
+  // Usar directamente la hoja 'Inscripción' del archivo activo
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Inscripción');
+  if (!sheet) {
+    Logger.log("No existe la hoja 'Inscripción' en el archivo activo.");
+    return;
+  }
+
+  var mainFolder = sociosMainFolder;
+  var lastRow = sheet.getLastRow();
+  var sociosProcesados = 0;
+  var archivosActualizados = 0;
+
+  for (var i = 7; i <= lastRow; i++) {
+    var numeroSocio = sheet.getRange("A" + i).getValue().toString().trim();
+    var nombreCompleto = [
+      sheet.getRange("B" + i).getValue().toString().trim(),
+      sheet.getRange("C" + i).getValue().toString().trim(),
+      sheet.getRange("D" + i).getValue().toString().trim()
+    ].filter(Boolean).join(' ').trim();
+    if (!nombreCompleto) continue;
+
+    var numeroU = numeroSocio.toUpperCase();
+
+    // Buscar carpeta del socio
+    var carpetaSocio = null;
+    var subIt = mainFolder.getFolders();
+    while (subIt.hasNext()) {
+      var sf = subIt.next();
+      if (sf.getName().toUpperCase().indexOf(numeroU + " ") === 0) {
+        carpetaSocio = sf;
+        break;
+      }
+    }
+    if (!carpetaSocio) {
+      sociosProcesados++;
+      continue;
+    }
+
+    // Buscar archivo por nombre: [iniciales] - TARJETA AHORRO Y PRESTAMO
+    var folderNameParts = carpetaSocio.getName().split(' ');
+    var inicialesCarpeta = folderNameParts[1] || '';
+    var archivoNombre = inicialesCarpeta + ' - TARJETA AHORRO Y PRESTAMO';
+    var archivosExistentes = carpetaSocio.getFilesByName(archivoNombre);
+    var destFile = null;
+    if (archivosExistentes.hasNext()) {
+      destFile = archivosExistentes.next();
+    }
+    if (!destFile) {
+      sociosProcesados++;
+      continue;
+    }
+
+    // Abrir el archivo del socio
+    var destSS = SpreadsheetApp.openById(destFile.getId());
+    var hojaAhorro = destSS.getSheetByName('Tarjeta Ahorro');
+    if (!hojaAhorro) {
+      sociosProcesados++;
+      continue;
+    }
+
+    // Asegurar que la columna G (7) existe en la hoja del socio antes de realizar la copia
+    var columnasActuales = hojaAhorro.getMaxColumns();
+    if (columnasActuales < 7) {
+      hojaAhorro.insertColumnsAfter(columnasActuales, 7 - columnasActuales);
+    }
+
+    // Identificar y separar celdas combinadas que se solapan con los rangos de destino
+    [hojaAhorro.getRange('G:G'), hojaAhorro.getRange('F8:G10')].forEach(function(r) {
+      var merges = r.getMergedRanges();
+      for (var j = 0; j < merges.length; j++) {
+        merges[j].breakApart();
+      }
+    });
+
+    // Sincronizar columna G y el rango F8:G10 desde el archivo base usando una hoja temporal
+    var hojaTemp = hojaAhorroBase.copyTo(destSS);
+    hojaTemp.getRange('G:G').copyTo(hojaAhorro.getRange('G1'));
+    hojaTemp.getRange('F8:G10').copyTo(hojaAhorro.getRange('F8'));
+    destSS.deleteSheet(hojaTemp);
+
+    archivosActualizados++;
+    Logger.log("Actualizado: " + carpetaSocio.getName());
+    sociosProcesados++;
+  }
+
+  Logger.log("¡Actualización de Tarjeta Ahorro completada!");
+  Logger.log("Socios procesados: " + sociosProcesados);
+  Logger.log("Archivos actualizados: " + archivosActualizados);
 }

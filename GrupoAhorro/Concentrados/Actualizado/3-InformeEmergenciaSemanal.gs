@@ -6,6 +6,16 @@ function llenarCondensadoEmergencias() {
     return;
   }
 
+  function numeroAColumna(colNum) {
+    var resultado = '';
+    while (colNum > 0) {
+      var residuo = (colNum - 1) % 26;
+      resultado = String.fromCharCode(65 + residuo) + resultado;
+      colNum = Math.floor((colNum - 1) / 26);
+    }
+    return resultado;
+  }
+
   function copiarCondicionalesColumna(sheet, fromColumn, toColumn) {
     if (fromColumn === toColumn) return;
 
@@ -110,7 +120,7 @@ function llenarCondensadoEmergencias() {
   }
 
   var sociosData = sheetCondensado.getRange(socioStartRow, 1, sociosRows, 2).getValues();
-  
+
   // Cargar todas las carpetas de socios una sola vez para evitar lentitud
   var foldersIter = sociosMainFolder.getFolders();
   var folderMap = {};
@@ -140,11 +150,14 @@ function llenarCondensadoEmergencias() {
     if (tarjetaFile) {
       var tarjetaId = tarjetaFile.getId();
       var gidEmergencia = "";
+      var hojaEmergenciaTarjeta = null; // Mejora #2: guardamos la hoja ya abierta
       try {
         var tempSs = SpreadsheetApp.openById(tarjetaId);
-        var shE = tempSs.getSheetByName('Fondo de Emergencia');
-        if (shE) gidEmergencia = shE.getSheetId();
-      } catch(e) {}
+        hojaEmergenciaTarjeta = tempSs.getSheetByName('Fondo de Emergencia');
+        if (hojaEmergenciaTarjeta) gidEmergencia = hojaEmergenciaTarjeta.getSheetId();
+      } catch (e) {
+        Logger.log('Error abriendo tarjeta del socio ' + socioId + ': ' + e);
+      }
 
       sociosInfo.push({
         row: socioStartRow + sr,
@@ -152,22 +165,22 @@ function llenarCondensadoEmergencias() {
         nombre: String(sociosData[sr][1] || '').trim(),
         tarjetaId: tarjetaId,
         tarjetaUrl: 'https://docs.google.com/spreadsheets/d/' + tarjetaId,
-        gidEmergencia: gidEmergencia
+        gidEmergencia: gidEmergencia,
+        hojaEmergencia: hojaEmergenciaTarjeta // reutilizada más abajo, evita abrir 2 veces
       });
     }
   }
 
   if (sociosInfo.length === 0) return Logger.log('No se encontraron tarjetas válidas.');
 
-  // Recolectar todas las fechas de todas las tarjetas (ahora optimizado)
+  // Recolectar todas las fechas de todas las tarjetas (reutilizando la hoja ya abierta)
   var todasLasFechas = new Set();
   var arregloFechas = [];
   for (var i = 0; i < sociosInfo.length; i++) {
+    var socioActualFechas = sociosInfo[i];
     try {
-      var tarjeta = SpreadsheetApp.openById(sociosInfo[i].tarjetaId);
-      var tarjetaEmergencia = tarjeta.getSheetByName('Fondo de Emergencia');
-      if (tarjetaEmergencia) {
-        var datosAhorro = tarjetaEmergencia.getRange('A4:A25').getValues();
+      if (socioActualFechas.hojaEmergencia) {
+        var datosAhorro = socioActualFechas.hojaEmergencia.getRange('A4:A25').getValues();
         for (var j = 0; j < datosAhorro.length; j++) {
           var f = datosAhorro[j][0];
           if (f && f instanceof Date) {
@@ -180,7 +193,8 @@ function llenarCondensadoEmergencias() {
         }
       }
     } catch (e) {
-      Logger.log('Error extrayendo fechas de Fondo de Emergencia para socio ' + socioId + ': ' + e);
+      // Mejora #1: ahora usa el socioId correcto en el log
+      Logger.log('Error extrayendo fechas de Fondo de Emergencia para socio ' + socioActualFechas.socioId + ': ' + e);
     }
   }
 
@@ -191,7 +205,7 @@ function llenarCondensadoEmergencias() {
 
   // Ordenar fechas y agrupar por semanas (lunes a domingo)
   arregloFechas.sort(function(a, b) { return a - b; });
-  
+
   var semanas = []; // Array de {lunesFecha: Date, domingoFecha: Date}
   for (var i = 0; i < arregloFechas.length; i++) {
     var fecha = arregloFechas[i];
@@ -201,7 +215,7 @@ function llenarCondensadoEmergencias() {
 
     var semanaExistente = false;
     for (var s = 0; s < semanas.length; s++) {
-      if (Utilities.formatDate(semanas[s].lunesFecha, Session.getScriptTimeZone(), 'yyyy-MM-dd') === 
+      if (Utilities.formatDate(semanas[s].lunesFecha, Session.getScriptTimeZone(), 'yyyy-MM-dd') ===
           Utilities.formatDate(lunesFecha, Session.getScriptTimeZone(), 'yyyy-MM-dd')) {
         semanaExistente = true;
         break;
@@ -221,7 +235,7 @@ function llenarCondensadoEmergencias() {
   var semanasExistentes = new Set();
   var columnasSemanaExistente = {};
   var colStart = 6; // Columna F = 6
-  if (lastCol >= colStart) { 
+  if (lastCol >= colStart) {
     var fila3 = sheetCondensado.getRange(3, colStart, 1, lastCol - colStart + 1).getValues()[0];
     for (var c = 0; c < fila3.length; c++) {
       var valor = fila3[c];
@@ -241,9 +255,40 @@ function llenarCondensadoEmergencias() {
 
   Logger.log('Semanas encontradas: ' + semanas.length + ', Semanas existentes: ' + semanasExistentes.size);
 
+  // Leer de una sola vez las fórmulas y valores actuales de todo el bloque de socios,
+  // para no tener que leer celda por celda dentro del loop de semanas
+  var primerFilaSocio = sociosInfo[0].row;
+  var ultimaFilaSocio = sociosInfo[sociosInfo.length - 1].row;
+  var numFilasBloque = ultimaFilaSocio - primerFilaSocio + 1;
+
+  var formulasExistentesBloque = [];
+  var valoresExistentesBloque = [];
+  if (lastCol >= colStart) {
+    formulasExistentesBloque = sheetCondensado
+      .getRange(primerFilaSocio, colStart, numFilasBloque, lastCol - colStart + 1)
+      .getFormulas();
+    valoresExistentesBloque = sheetCondensado
+      .getRange(primerFilaSocio, colStart, numFilasBloque, lastCol - colStart + 1)
+      .getValues();
+  }
+
+  // Preparar de una sola vez las fórmulas de hyperlink de la columna B (no dependen de la semana)
+  var formulasNombreBloque = [];
+  var formulasNombreActualesBloque = sheetCondensado
+    .getRange(primerFilaSocio, 2, numFilasBloque, 1)
+    .getFormulas();
+  for (var i = 0; i < sociosInfo.length; i++) {
+    var socio = sociosInfo[i];
+    var finalUrl = socio.tarjetaUrl + (socio.gidEmergencia ? '#gid=' + socio.gidEmergencia : '');
+    var linkFormula = '=HYPERLINK("' + finalUrl + '", "' + socio.nombre + '")';
+    var idxFilaNombre = socio.row - primerFilaSocio;
+    formulasNombreBloque[idxFilaNombre] = [linkFormula];
+  }
+  sheetCondensado.getRange(primerFilaSocio, 2, numFilasBloque, 1).setFormulas(formulasNombreBloque);
+
   // Llenar por semana: fila 3 (fechas del lunes), fila 2 (suma), fila 4+ (ImportRange por socio)
   var colActual = colStart;
-  
+
   for (var s = 0; s < semanas.length; s++) {
     var semana = semanas[s];
     var fechaLunesStr = Utilities.formatDate(semana.lunesFecha, Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -256,8 +301,8 @@ function llenarCondensadoEmergencias() {
       var fechaLunesDisplay = Utilities.formatDate(semana.lunesFecha, 'UTC', 'dd/MM/yyyy');
       sheetCondensado.getRange(3, colDestino).setValue(fechaLunesDisplay);
 
-      // Poner fórmula de suma en fila 2
-      var columnaLetra = String.fromCharCode(64 + colDestino); // Convertir número de columna a letra
+      // Mejora #3: usar numeroAColumna en vez de String.fromCharCode (soporta más allá de la columna Z)
+      var columnaLetra = numeroAColumna(colDestino);
       sheetCondensado.getRange(2, colDestino).setFormula('=SUM(' + columnaLetra + '4:' + columnaLetra + ')');
 
       // Copiar reglas de formato condicional de la columna F a la nueva columna
@@ -266,36 +311,40 @@ function llenarCondensadoEmergencias() {
       Logger.log('Semana ' + fechaLunesStr + ' ya existe, rellenando faltantes.');
     }
 
-    // Para cada socio, actualizar nombre/enlace y poner fórmulas
+    // Para cada socio, calcular la fórmula de aportaciones y armar la columna completa en memoria
+    var fechaLunesFormatted = Utilities.formatDate(semana.lunesFecha, 'UTC', 'yyyy-MM-dd');
+    var fechaDomingoFormatted = Utilities.formatDate(semana.domingoFecha, 'UTC', 'yyyy-MM-dd');
+    var idxColBloque = colDestino - colStart;
+    var formulasColumnaDestino = [];
+
     for (var i = 0; i < sociosInfo.length; i++) {
       var socio = sociosInfo[i];
-
-      // Actualizar columna B con el enlace a la pestaña de Emergencia
-      var celdaNombre = sheetCondensado.getRange(socio.row, 2);
-      var finalUrl = socio.tarjetaUrl + (socio.gidEmergencia ? '#gid=' + socio.gidEmergencia : '');
-      var linkFormula = '=HYPERLINK("' + finalUrl + '", "' + socio.nombre + '")';
-      if (celdaNombre.getFormula() !== linkFormula) {
-        celdaNombre.setFormula(linkFormula);
-      }
+      var idxFilaBloque = socio.row - primerFilaSocio;
 
       // Construir fórmula de aportaciones
-      var fechaLunesFormatted = Utilities.formatDate(semana.lunesFecha, 'UTC', 'yyyy-MM-dd');
-      var fechaDomingoFormatted = Utilities.formatDate(semana.domingoFecha, 'UTC', 'yyyy-MM-dd');
-      
       var formulaBase = 'SUM(QUERY(IMPORTRANGE("' + socio.tarjetaUrl + '","\'Fondo de Emergencia\'!A4:D25"), "select Col3 where Col1 >= date \'' +
         fechaLunesFormatted + '\' and Col1 <= date \'' + fechaDomingoFormatted + '\'", 0))';
 
       var formulaSemana = '=IFERROR(' + formulaBase + ', 0)';
 
-      var celdaDestino = sheetCondensado.getRange(socio.row, colDestino);
       if (semanaYaExiste) {
-        if (!celdaDestino.getFormula() && celdaDestino.getValue() === '') {
-          celdaDestino.setFormula('=IFERROR(' + formulaBase + ', 0)');
+        var filaBloque = formulasExistentesBloque[idxFilaBloque];
+        var formulaActual = (filaBloque && filaBloque[idxColBloque]) ? filaBloque[idxColBloque] : '';
+        var filaValoresBloque = valoresExistentesBloque[idxFilaBloque];
+        var valorActual = (filaValoresBloque && filaValoresBloque[idxColBloque] !== undefined) ? filaValoresBloque[idxColBloque] : '';
+
+        if (!formulaActual && valorActual === '') {
+          formulasColumnaDestino.push([formulaSemana]);
+        } else {
+          formulasColumnaDestino.push([formulaActual]);
         }
       } else {
-        celdaDestino.setFormula(formulaSemana);
+        formulasColumnaDestino.push([formulaSemana]);
       }
     }
+
+    // Escribir toda la columna de esa semana de una sola vez, en vez de celda por celda
+    sheetCondensado.getRange(primerFilaSocio, colDestino, sociosInfo.length, 1).setFormulas(formulasColumnaDestino);
 
     colActual++;
   }
@@ -304,16 +353,6 @@ function llenarCondensadoEmergencias() {
   var sheetResumen = ss.getSheetByName('Resumen Fondo de Emergencia');
   if (sheetResumen) {
     var lastColResumen = sheetCondensado.getLastColumn();
-
-    function numeroAColumna(colNum) {
-      var resultado = '';
-      while (colNum > 0) {
-        var residuo = (colNum - 1) % 26;
-        resultado = String.fromCharCode(65 + residuo) + resultado;
-        colNum = Math.floor((colNum - 1) / 26);
-      }
-      return resultado;
-    }
 
     // Mapa de fechas ya existentes en resumen (columna A, desde fila 3)
     var fechasExistentesResumen = {};

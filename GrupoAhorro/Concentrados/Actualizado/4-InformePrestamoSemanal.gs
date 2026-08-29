@@ -161,27 +161,12 @@ function llenarCondensadoPrestamos() {
     return;
   }
 
-  var headers = [
-    'CÓDIGO',
-    'NOMBRES',
-    'PRIMER APELLIDO',
-    'SEGUNDO APELLIDO',
-    'FECHA OTORGADO',
-    'FECHA TÉRMINO',
-    'CANTIDAD',
-    'ABONO A PRÉSTAMO',
-    'INTERÉS',
-    'ABONO A INTERÉS',
-    'SALDO PENDIENTE'
-  ];
-
   var colSemanasInicio = 12; // L
   
   // Leer datos existentes en la hoja
   var datosExistentes = {};
   var semanasExistentes = {};
   var semanasExistentesOriginal = {};
-  var filasExistentes = {};
   var lastRowActual = sheetPrestamos.getLastRow();
   
   if (lastRowActual >= 4) {
@@ -199,7 +184,6 @@ function llenarCondensadoPrestamos() {
           fila: rowIdx,
           datos: rangoExistente[ex]
         };
-        filasExistentes[keyExist] = rowIdx;
       }
     }
   }
@@ -323,11 +307,9 @@ function llenarCondensadoPrestamos() {
   if (filasPrestamos.length > 0) {
     // Construir mapa de nuevos préstamos por código + nombreHoja (para múltiples préstamos por socio)
     var nuevosPrestamos = {};
-    var indicePorCodigo = {};
     for (var np = 0; np < filasPrestamos.length; np++) {
       var prestamoId = filasPrestamos[np].codigo + '_' + filasPrestamos[np].nombreHoja;
       nuevosPrestamos[prestamoId] = np;
-      indicePorCodigo[prestamoId] = np;
     }
 
     // Agregar nuevas semanas a semanasExistentes
@@ -343,7 +325,12 @@ function llenarCondensadoPrestamos() {
     }
 
     // Reconstruir el orden de semanas
-    var clavesSemanasFinal = Object.keys(semanasExistentes).sort();
+    var clavesExistentesOrdenadas = Object.keys(semanasExistentesOriginal).sort();
+    var clavesNuevasOrdenadas = Object.keys(semanasExistentes)
+      .filter(function(clave) { return !semanasExistentesOriginal[clave]; })
+      .sort();
+    var clavesSemanasFinal = clavesExistentesOrdenadas.concat(clavesNuevasOrdenadas);
+
     var nuevaSemanasMap = {};
     for (var ncs = 0; ncs < clavesSemanasFinal.length; ncs++) {
       nuevaSemanasMap[clavesSemanasFinal[ncs]] = {
@@ -479,18 +466,18 @@ function llenarCondensadoPrestamos() {
       }
     }
 
-    // Ordenar alfabéticamente por nombre y unir celdas (B:D)
-    var ultimaFilaFinal = sheetPrestamos.getLastRow();
-    if (ultimaFilaFinal >= 4) {
-      sheetPrestamos.getRange(4, 1, ultimaFilaFinal - 3, sheetPrestamos.getLastColumn()).sort({ column: 2, ascending: true });
-      unirCeldasNombre(sheetPrestamos);
-    }
-
     // Escribir fórmulas de semanas para préstamos modificados (solo nuevas columnas)
     for (var fm = 0; fm < filasModificadas.length; fm++) {
       if (filasModificadas[fm].cantCols > 0) {
         sheetPrestamos.getRange(filasModificadas[fm].fila, filasModificadas[fm].colInicio, 1, filasModificadas[fm].cantCols).setFormulas([filasModificadas[fm].formulas]);
       }
+    }
+
+    // Ordenar alfabéticamente por nombre y unir celdas (B:D)
+    var ultimaFilaFinal = sheetPrestamos.getLastRow();
+    if (ultimaFilaFinal >= 4) {
+      sheetPrestamos.getRange(4, 1, ultimaFilaFinal - 3, sheetPrestamos.getLastColumn()).sort({ column: 2, ascending: true });
+      unirCeldasNombre(sheetPrestamos);
     }
 
     Logger.log('Detalle de préstamos completado. Nuevos: ' + filasNuevas.length + ', Actualizados: ' + filasModificadas.length);
